@@ -227,50 +227,56 @@ document.addEventListener('DOMContentLoaded', () => {
         await client.auth.signOut();
     });
 
-    updateMemberForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const miembroId = memberIdInput.value;
-        const puntos = parseInt(memberPointsInput.value);
+    // MODIFICACIÓN: Se agrega una verificación para evitar el TypeError
+    if (updateMemberForm) {
+        updateMemberForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const miembroId = memberIdInput.value;
+            const puntos = parseInt(memberPointsInput.value);
 
-        if (miembroId && !isNaN(puntos)) {
-            const { error } = await client
-                .from('miembros_del_clan')
-                .update({ puntos: puntos })
-                .eq('id', miembroId);
+            if (miembroId && !isNaN(puntos)) {
+                const { error } = await client
+                    .from('miembros_del_clan')
+                    .update({ puntos: puntos })
+                    .eq('id', miembroId);
 
-            if (error) {
-                alert('Error al actualizar: Es posible que no tengas permiso o el ID no sea válido.');
-                console.error(error);
-            } else {
-                alert('Puntos actualizados con éxito.');
-                await renderGrupoParaGestion(currentGroupId, (currentRole === 'lider' || currentRole === 'decano' || currentRole === 'admin'));
+                if (error) {
+                    alert('Error al actualizar: Es posible que no tengas permiso o el ID no sea válido.');
+                    console.error(error);
+                } else {
+                    alert('Puntos actualizados con éxito.');
+                    await renderGrupoParaGestion(currentGroupId, (currentRole === 'lider' || currentRole === 'decano' || currentRole === 'admin'));
+                }
+                updateMemberForm.reset();
+                memberNameInput.value = '';
             }
-            updateMemberForm.reset();
-            memberNameInput.value = '';
-        }
-    });
-    
-    addMemberForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const nombre = addMemberNameInput.value;
-        const puntos = parseInt(addMemberPointsInput.value);
-        const idEscuadra = addMemberEscuadraSelect.value;
-        
-        if (nombre && idEscuadra) {
-            const { error } = await client
-                .from('miembros_del_clan')
-                .insert({ nombre: nombre, puntos: puntos, id_escuadra: idEscuadra, id_grupo: currentGroupId });
+        });
+    }
+
+    // MODIFICACIÓN: Se agrega una verificación para evitar el TypeError
+    if (addMemberForm) {
+        addMemberForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nombre = addMemberNameInput.value;
+            const puntos = parseInt(addMemberPointsInput.value);
+            const idEscuadra = addMemberEscuadraSelect.value;
             
-            if (error) {
-                alert('Error al añadir miembro.');
-                console.error(error);
-            } else {
-                alert('Miembro añadido con éxito.');
-                await renderGrupoParaGestion(currentGroupId, true);
+            if (nombre && idEscuadra) {
+                const { error } = await client
+                    .from('miembros_del_clan')
+                    .insert({ nombre: nombre, puntos: puntos, id_escuadra: idEscuadra, id_grupo: currentGroupId });
+                
+                if (error) {
+                    alert('Error al añadir miembro.');
+                    console.error(error);
+                } else {
+                    alert('Miembro añadido con éxito.');
+                    await renderGrupoParaGestion(currentGroupId, true);
+                }
+                addMemberForm.reset();
             }
-            addMemberForm.reset();
-        }
-    });
+        });
+    }
 
     document.addEventListener('click', async (e) => {
         if (e.target.classList.contains('manage-btn')) {
