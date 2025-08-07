@@ -85,8 +85,8 @@ async function ensureGroupStructure(groupId) {
     if (gruposError) {
         console.error('Error al obtener la lista de grupos:', gruposError);
     } else {
-        const manuelGroup = grupos.find(g => g.nombre.toLowerCase() === 'manuel');
-        const frenyedGroup = grupos.find(g => g.nombre.toLowerCase() === 'frenyed');
+              const manuelGroup = grupos.find(g => g.nombre.toLowerCase().includes('manuel'));
+              const frenyedGroup = grupos.find(g => g.nombre.toLowerCase().includes('frenyed'));
 
         if (manuelGroup && groupId === manuelGroup.id) {
             targetSquads = 2;
