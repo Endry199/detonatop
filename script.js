@@ -1,7 +1,10 @@
 // Estas son tus claves de proyecto de Supabase
 const supabaseUrl = 'https://nihwpbxkwrndxubpqkes.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImexdHAiOjIwNzA2MjA1MDh00k.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImV4cCI6MjA3MDE0MzcwOH0.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
+
+// Accedemos a createClient directamente del objeto global 'supabase'
+const { createClient } = supabase;
+const client = createClient(supabaseUrl, supabaseKey);
 
 // Elementos del DOM
 const gruposSection = document.getElementById('grupos-table-section');
@@ -23,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Funciones de Renderizado ---
     async function renderGrupos() {
-        const { data: grupos, error } = await supabase
+        const { data: grupos, error } = await client
             .from('grupos')
             .select('*')
             .order('puntos_totales', { ascending: false });
@@ -48,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gruposSection.style.display = 'none';
         manageGroupSection.style.display = 'block';
 
-        const { data: grupo, error: grupoError } = await supabase
+        const { data: grupo, error: grupoError } = await client
             .from('grupos')
             .select('*')
             .eq('id', idGrupo)
@@ -61,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         manageGroupTitle.textContent = `${grupo.nombre} | Puntos Totales: ${grupo.puntos_totales || 0}`;
 
-        const { data: escuadras, error: escuadrasError } = await supabase
+        const { data: escuadras, error: escuadrasError } = await client
             .from('escuadras')
             .select('*')
             .eq('id_grupo', idGrupo);
@@ -99,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function renderMiembrosEnEscuadra(idEscuadra, bodyId, puedeEditar) {
-        const { data: miembros, error } = await supabase
+        const { data: miembros, error } = await client
             .from('miembros_del_clan')
             .select('*')
             .eq('id_escuadra', idEscuadra)
@@ -132,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Funciones de Autenticación y Lógica ---
-    supabase.auth.onAuthStateChange((event, session) => {
+    client.auth.onAuthStateChange((event, session) => {
         if (session) {
             handleLogin(session);
         } else {
@@ -144,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loginBtn.style.display = 'none';
         logoutBtn.style.display = 'block';
         
-        const { data: userProfile, error } = await supabase
+        const { data: userProfile, error } = await client
             .from('perfiles')
             .select('rol, id_grupo')
             .eq('id', session.user.id)
@@ -164,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
              await renderGrupoParaGestion(currentGroupId, puedeEditar);
         } else if (currentRole === 'admin') {
             console.log('Admin logeado. Aquí puedes mostrar una vista para que elijas qué grupo gestionar.');
-            // Implementa aquí la lógica para que el admin elija un grupo.
         }
     }
 
@@ -173,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.style.display = 'none';
         gruposSection.style.display = 'block';
         manageGroupSection.style.display = 'none';
-        renderGrupos(); // Volver a la vista pública
+        renderGrupos();
     }
 
     // --- Event Listeners ---
@@ -182,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = prompt("Ingresa tu correo:");
         const password = prompt("Ingresa tu contraseña:");
         if (email && password) {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            const { error } = await client.auth.signInWithPassword({ email, password });
             if (error) {
                 alert("Error al iniciar sesión: verifica tu correo y contraseña.");
                 console.error(error);
@@ -191,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     logoutBtn.addEventListener('click', async () => {
-        await supabase.auth.signOut();
+        await client.auth.signOut();
     });
 
     updateMemberForm.addEventListener('submit', async (e) => {
@@ -200,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const puntos = parseInt(memberPointsInput.value);
 
         if (miembroId && !isNaN(puntos)) {
-            const { error } = await supabase
+            const { error } = await client
                 .from('miembros_del_clan')
                 .update({ puntos: puntos })
                 .eq('id', miembroId);
@@ -234,6 +236,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Iniciar la aplicación en modo público
     renderGrupos();
 });
