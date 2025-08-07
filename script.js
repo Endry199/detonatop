@@ -41,10 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         gruposTableBody.innerHTML = '';
-        if (isAdmin) {
-            manageGroupHeader.style.display = 'table-cell';
-        } else {
-            manageGroupHeader.style.display = 'none';
+        
+        // MODIFICACIÓN: Verificamos si el elemento existe antes de acceder a él.
+        if (manageGroupHeader) {
+            if (isAdmin) {
+                manageGroupHeader.style.display = 'table-cell';
+            } else {
+                manageGroupHeader.style.display = 'none';
+            }
         }
         
         grupos.forEach(grupo => {
@@ -64,8 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function renderGrupoParaGestion(idGrupo, puedeEditar) {
-        gruposSection.style.display = 'none';
-        manageGroupSection.style.display = 'block';
+        if (gruposSection) gruposSection.style.display = 'none';
+        if (manageGroupSection) manageGroupSection.style.display = 'block';
 
         const { data: grupo, error: grupoError } = await client
             .from('grupos')
@@ -78,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        manageGroupTitle.textContent = `${grupo.nombre} | Puntos Totales: ${grupo.puntos_totales || 0}`;
+        if (manageGroupTitle) manageGroupTitle.textContent = `${grupo.nombre} | Puntos Totales: ${grupo.puntos_totales || 0}`;
 
         const { data: escuadras, error: escuadrasError } = await client
             .from('escuadras')
@@ -93,15 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
         currentEscuadras = escuadras;
         
         // Llenar el selector de escuadras para el formulario de añadir miembros
-        addMemberEscuadraSelect.innerHTML = '<option value="">Selecciona Escuadra</option>';
-        escuadras.forEach(escuadra => {
-            const option = document.createElement('option');
-            option.value = escuadra.id;
-            option.textContent = escuadra.nombre;
-            addMemberEscuadraSelect.appendChild(option);
-        });
+        if (addMemberEscuadraSelect) {
+            addMemberEscuadraSelect.innerHTML = '<option value="">Selecciona Escuadra</option>';
+            escuadras.forEach(escuadra => {
+                const option = document.createElement('option');
+                option.value = escuadra.id;
+                option.textContent = escuadra.nombre;
+                addMemberEscuadraSelect.appendChild(option);
+            });
+        }
         
-        escuadrasList.innerHTML = '';
+        if (escuadrasList) escuadrasList.innerHTML = '';
         escuadras.forEach(escuadra => {
             const escuadraDiv = document.createElement('div');
             escuadraDiv.className = 'escuadra-tab';
@@ -122,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </table>
                 </div>
             `;
-            escuadrasList.appendChild(escuadraDiv);
+            if (escuadrasList) escuadrasList.appendChild(escuadraDiv);
 
             renderMiembrosEnEscuadra(escuadra.id, `miembros-table-body-${escuadra.id}`, puedeEditar);
         });
@@ -141,25 +147,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const miembrosBody = document.getElementById(bodyId);
-        miembrosBody.innerHTML = '';
-        miembros.forEach(miembro => {
-            const row = document.createElement('tr');
-            let actionsCell = '';
-            if (puedeEditar) {
-                actionsCell = `
-                    <td class="actions-cell">
-                        <button class="edit-btn" data-id="${miembro.id}" data-name="${miembro.nombre}" data-points="${miembro.puntos}">Editar</button>
-                        <button class="delete-btn" data-id="${miembro.id}">Expulsar</button>
-                    </td>
+        if (miembrosBody) {
+            miembrosBody.innerHTML = '';
+            miembros.forEach(miembro => {
+                const row = document.createElement('tr');
+                let actionsCell = '';
+                if (puedeEditar) {
+                    actionsCell = `
+                        <td class="actions-cell">
+                            <button class="edit-btn" data-id="${miembro.id}" data-name="${miembro.nombre}" data-points="${miembro.puntos}">Editar</button>
+                            <button class="delete-btn" data-id="${miembro.id}">Expulsar</button>
+                        </td>
+                    `;
+                }
+                row.innerHTML = `
+                    <td>${miembro.nombre}</td>
+                    <td>${miembro.puntos}</td>
+                    ${actionsCell}
                 `;
-            }
-            row.innerHTML = `
-                <td>${miembro.nombre}</td>
-                <td>${miembro.puntos}</td>
-                ${actionsCell}
-            `;
-            miembrosBody.appendChild(row);
-        });
+                miembrosBody.appendChild(row);
+            });
+        }
     }
 
     client.auth.onAuthStateChange((event, session) => {
@@ -171,8 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function handleLogin(session) {
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'block';
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'block';
         
         const { data: userProfile, error } = await client
             .from('perfiles')
@@ -189,8 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const puedeEditar = (userProfile.rol === 'lider' || userProfile.rol === 'decano' || userProfile.rol === 'admin');
 
         if (userProfile.rol === 'admin') {
-            gruposSection.style.display = 'block';
-            manageGroupSection.style.display = 'none';
+            if (gruposSection) gruposSection.style.display = 'block';
+            if (manageGroupSection) manageGroupSection.style.display = 'none';
             renderGrupos(true); 
         } else {
             currentGroupId = userProfile.id_grupo;
@@ -204,30 +212,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleLogout() {
-        loginBtn.style.display = 'block';
-        logoutBtn.style.display = 'none';
-        gruposSection.style.display = 'block';
-        manageGroupSection.style.display = 'none';
+        if (loginBtn) loginBtn.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+        if (gruposSection) gruposSection.style.display = 'block';
+        if (manageGroupSection) manageGroupSection.style.display = 'none';
         renderGrupos(false); 
     }
 
-    loginBtn.addEventListener('click', async () => {
-        const email = prompt("Ingresa tu correo:");
-        const password = prompt("Ingresa tu contraseña:");
-        if (email && password) {
-            const { error } = await client.auth.signInWithPassword({ email, password });
-            if (error) {
-                alert("Error al iniciar sesión: verifica tu correo y contraseña.");
-                console.error(error);
+    if (loginBtn) {
+        loginBtn.addEventListener('click', async () => {
+            const email = prompt("Ingresa tu correo:");
+            const password = prompt("Ingresa tu contraseña:");
+            if (email && password) {
+                const { error } = await client.auth.signInWithPassword({ email, password });
+                if (error) {
+                    alert("Error al iniciar sesión: verifica tu correo y contraseña.");
+                    console.error(error);
+                }
             }
-        }
-    });
+        });
+    }
 
-    logoutBtn.addEventListener('click', async () => {
-        await client.auth.signOut();
-    });
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            await client.auth.signOut();
+        });
+    }
 
-    // MODIFICACIÓN: Se agrega una verificación para evitar el TypeError
     if (updateMemberForm) {
         updateMemberForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -248,12 +259,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     await renderGrupoParaGestion(currentGroupId, (currentRole === 'lider' || currentRole === 'decano' || currentRole === 'admin'));
                 }
                 updateMemberForm.reset();
-                memberNameInput.value = '';
+                if (memberNameInput) memberNameInput.value = '';
             }
         });
     }
-
-    // MODIFICACIÓN: Se agrega una verificación para evitar el TypeError
+    
     if (addMemberForm) {
         addMemberForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -290,9 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const memberName = e.target.dataset.name;
             const memberPoints = e.target.dataset.points;
             
-            memberIdInput.value = memberId;
-            memberNameInput.value = memberName;
-            memberPointsInput.value = memberPoints;
+            if (memberIdInput) memberIdInput.value = memberId;
+            if (memberNameInput) memberNameInput.value = memberName;
+            if (memberPointsInput) memberPointsInput.value = memberPoints;
         }
 
         if (e.target.classList.contains('delete-btn')) {
