@@ -1,4 +1,6 @@
-// Estas son tus claves de proyecto de Supabase
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/esm/index.js';
+
+// Claves de Supabase
 const supabaseUrl = 'https://nihwpbxkwrndxubpqkes.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImexdHAiOjIwNzA2MjA1MDh00k.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -9,6 +11,10 @@ const gruposTableBody = document.getElementById('grupos-table-body');
 const manageGroupSection = document.getElementById('manage-group-section');
 const manageGroupTitle = document.getElementById('manage-group-title');
 const escuadrasList = document.getElementById('escuadras-list');
+<<<<<<< HEAD
+=======
+const miembrosTableBody = document.getElementById('miembros-table-body');
+>>>>>>> 3c449a51f2b9a5bfa23d7b60894668b3862bcd87
 const updateMemberForm = document.getElementById('update-member-form');
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
@@ -22,6 +28,10 @@ let currentRole = null;
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- Funciones de Renderizado ---
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3c449a51f2b9a5bfa23d7b60894668b3862bcd87
     async function renderGrupos() {
         const { data: grupos, error } = await supabase
             .from('grupos')
@@ -94,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             escuadrasList.appendChild(escuadraDiv);
 
+<<<<<<< HEAD
+=======
+            // Cargar los miembros para cada escuadra
+>>>>>>> 3c449a51f2b9a5bfa23d7b60894668b3862bcd87
             renderMiembrosEnEscuadra(escuadra.id, `miembros-table-body-${escuadra.id}`, puedeEditar);
         });
     }
@@ -132,6 +146,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Funciones de Autenticación y Lógica ---
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3c449a51f2b9a5bfa23d7b60894668b3862bcd87
     supabase.auth.onAuthStateChange((event, session) => {
         if (session) {
             handleLogin(session);
@@ -210,6 +228,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(error);
             } else {
                 alert('Puntos actualizados con éxito.');
+<<<<<<< HEAD
+=======
+                // Recargar la vista del grupo actual
+>>>>>>> 3c449a51f2b9a5bfa23d7b60894668b3862bcd87
                 await renderGrupoParaGestion(currentGroupId, (currentRole === 'lider' || currentRole === 'decano' || currentRole === 'admin'));
             }
             updateMemberForm.reset();
@@ -217,6 +239,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+<<<<<<< HEAD
+=======
+    // Delegación de eventos para los botones de editar
+>>>>>>> 3c449a51f2b9a5bfa23d7b60894668b3862bcd87
     manageGroupSection.addEventListener('click', (e) => {
         if (e.target.classList.contains('edit-btn')) {
             const memberId = e.target.dataset.id;
@@ -226,11 +252,14 @@ document.addEventListener('DOMContentLoaded', () => {
             memberIdInput.value = memberId;
             memberNameInput.value = memberName;
             memberPointsInput.value = memberPoints;
+<<<<<<< HEAD
         }
         
         const escuadraTab = e.target.closest('.escuadra-tab');
         if (escuadraTab) {
             escuadraTab.classList.toggle('expanded');
+=======
+>>>>>>> 3c449a51f2b9a5bfa23d7b60894668b3862bcd87
         }
     });
 
