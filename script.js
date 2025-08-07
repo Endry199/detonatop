@@ -1,9 +1,13 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/esm/index.js';
+// AVISO IMPORTANTE: No necesitas la línea de importación si usas el script global.
+// La quitamos para evitar el error 404.
+// import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/esm/index.js';
 
 // Claves de proyecto de Supabase
 const supabaseUrl = 'https://nihwpbxkwrndxubpqkes.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImV4cCI6MjA3MDE0MzcwOH0.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// ✅ SOLUCIÓN: Usamos 'window.supabase' para acceder a la librería globalmente.
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Elementos del DOM
 const gruposTableBody = document.getElementById('grupos-table-body');
@@ -14,7 +18,7 @@ const escuadrasList = document.getElementById('escuadras-list');
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const backToGroupsBtn = document.getElementById('back-to-groups-btn');
-const manageGroupHeader = document.querySelector('.actions-header'); // Elemento que faltaba
+const manageGroupHeader = document.querySelector('.actions-header');
 
 let currentGroupId = null;
 let currentRole = null;
@@ -75,8 +79,8 @@ async function renderGrupos(isAdmin = false) {
         if (isAdmin) {
             gestionBtn = `<td class="actions-cell"><button class="manage-btn" data-group-id="${grupo.id}">Gestionar</button></td>`;
         } else {
-            gestionBtn = `<td class="actions-cell" style="display: none;"></td>`;
-        }
+            gestionBtn = `<td class="actions-cell" style="display: none;"></td>`;
+        }
         row.innerHTML = `
             <td>${grupo.nombre}</td>
             <td>${grupo.puntos_totales || 0}</td>
@@ -293,11 +297,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             currentGroupId = userProfile.id_grupo;
             if (currentGroupId) {
-                 await renderGrupoParaGestion(currentGroupId, puedeEditar);
+                await renderGrupoParaGestion(currentGroupId, puedeEditar);
             } else {
-                 console.error("El usuario no tiene un ID de grupo asignado.");
-                 alert("Tu usuario no tiene un grupo asignado. Contacta a un administrador.");
-                 handleLogout();
+                console.error("El usuario no tiene un ID de grupo asignado.");
+                alert("Tu usuario no tiene un grupo asignado. Contacta a un administrador.");
+                handleLogout();
             }
         }
     }
@@ -449,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const puntos = parseInt(row.querySelector('.new-member-points').value);
 
             if (nombre && !isNaN(puntos)) {
-                 const { error } = await supabase
+                const { error } = await supabase
                     .from('miembros_del_clan')
                     .insert({ nombre, puntos, id_escuadra: escuadraId, id_grupo: currentGroupId });
 
