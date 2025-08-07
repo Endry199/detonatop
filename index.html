@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ＤｅｔｏｎａㅤＴｏｐ</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="script.js" type="module" defer></script>
+</head>
+<body>
     <header>
         <h1>ＤｅｔｏｎａㅤＴｏｐ</h1>
         <div class="user-controls">
@@ -18,48 +18,42 @@
     <main>
         <section id="grupos-table-section">
             <div class="table-container">
+                <h2>Tabla de Grupos</h2>
                 <table>
                     <thead>
                         <tr>
                             <th>Grupo</th>
-                            <th>Puntos</th>
-                            <th class="actions-header" style="display: none;">Acciones</th>
+                            <th>Puntos Totales</th>
                         </tr>
                     </thead>
-                    <tbody id="grupos-table-body">
-                        </tbody>
+                    <tbody id="grupos-table-body"></tbody>
                 </table>
             </div>
         </section>
 
         <section id="manage-group-section" style="display: none;">
-            <h2>Gestionar Mi Grupo</h2>
+            <h2 id="manage-group-title"></h2>
+            
             <div class="form-container">
                 <form id="update-member-form">
-                    <input type="text" id="member-name" placeholder="Nombre del Miembro">
+                    <input type="hidden" id="member-id"> 
+                    
+                    <input type="text" id="member-name" placeholder="Nombre del Miembro" readonly>
                     <input type="number" id="member-points" placeholder="Puntos">
                     <button type="submit">Actualizar Puntos</button>
                 </form>
             </div>
 
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Puntos</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="miembros-table-body">
-                        </tbody>
-                </table>
-            </div>
+            <div id="escuadras-list" class="escuadras-container">
+                </div>
         </section>
     </main>
 
     <footer>
         <p>&copy; 2025 DｅｔｏｎａㅤＴｏｐ - Todos los derechos reservados.</p>
     </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js" type="module" defer></script>
 </body>
 </html>
