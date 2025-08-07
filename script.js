@@ -321,6 +321,9 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.textContent = 'Guardar';
             e.target.classList.remove('edit-btn');
             e.target.classList.add('save-btn');
+            
+            // ✅ CORRECCIÓN: Agregamos 'return' para evitar que se ejecute la lógica de "Guardar"
+            return;
         }
 
         if (e.target.classList.contains('save-btn')) {
@@ -341,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Error al guardar cambios.');
                 console.error(error);
             } else {
-                alert('Miembro actualizado con éxito.');
+                // ✅ CAMBIO: Se elimina el alert para una mejor experiencia de usuario
                 const groupId = row.closest('.expanded-content').dataset.groupId;
                 const container = row.closest('.expanded-content').querySelector('td');
                 const puedeEditar = (currentRole === 'admin') || (['lider', 'decano'].includes(currentRole) && currentGroupId == groupId);
