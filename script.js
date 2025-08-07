@@ -3,8 +3,7 @@ const supabaseUrl = 'https://nihwpbxkwrndxubpqkes.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImV4cCI6MjA3MDE0MzcwOH0.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
 
 // Accedemos a createClient a través del objeto global 'supabase'
-const { createClient } = supabase;
-const client = createClient(supabaseUrl, supabaseKey);
+const client = supabase.createClient(supabaseUrl, supabaseKey);
 
 // Elementos del DOM
 const gruposSection = document.getElementById('grupos-table-section');
@@ -13,18 +12,23 @@ const manageGroupSection = document.getElementById('manage-group-section');
 const manageGroupTitle = document.getElementById('manage-group-title');
 const escuadrasList = document.getElementById('escuadras-list');
 const updateMemberForm = document.getElementById('update-member-form');
+const addMemberForm = document.getElementById('add-member-form');
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const memberIdInput = document.getElementById('member-id');
 const memberNameInput = document.getElementById('member-name');
 const memberPointsInput = document.getElementById('member-points');
+const addMemberNameInput = document.getElementById('add-member-name');
+const addMemberPointsInput = document.getElementById('add-member-points');
+const addMemberEscuadraSelect = document.getElementById('add-member-escuadra');
+const manageGroupHeader = document.getElementById('manage-group-header');
 
 let currentGroupId = null;
 let currentRole = null;
+let currentEscuadras = [];
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Funciones de Renderizado ---
     async function renderGrupos(isAdmin = false) {
         const { data: grupos, error } = await client
             .from('grupos')
@@ -37,6 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         gruposTableBody.innerHTML = '';
+        if (isAdmin) {
+            manageGroupHeader.style.display = 'table-cell';
+        } else {
+            manageGroupHeader.style.display = 'none';
+        }
+        
         grupos.forEach(grupo => {
             const row = document.createElement('tr');
             let gestionBtn = '';
@@ -48,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${grupo.puntos_totales || 0}</td>
                 ${gestionBtn}
             `;
-            // Agrega el ID del grupo a la fila para poder gestionarlo
             row.dataset.groupId = grupo.id;
             gruposTableBody.appendChild(row);
         });
@@ -80,7 +89,18 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error al obtener las escuadras:', escuadrasError);
             return;
         }
-
+        
+        currentEscuadras = escuadras;
+        
+        // Llenar el selector de escuadras para el formulario de añadir miembros
+        addMemberEscuadraSelect.innerHTML = '<option value="">Selecciona Escuadra</option>';
+        escuadras.forEach(escuadra => {
+            const option = document.createElement('option');
+            option.value = escuadra.id;
+            option.textContent = escuadra.nombre;
+            addMemberEscuadraSelect.appendChild(option);
+        });
+        
         escuadrasList.innerHTML = '';
         escuadras.forEach(escuadra => {
             const escuadraDiv = document.createElement('div');
@@ -104,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             escuadrasList.appendChild(escuadraDiv);
 
-            // Cargar los miembros para cada escuadra
             renderMiembrosEnEscuadra(escuadra.id, `miembros-table-body-${escuadra.id}`, puedeEditar);
         });
     }
@@ -130,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 actionsCell = `
                     <td class="actions-cell">
                         <button class="edit-btn" data-id="${miembro.id}" data-name="${miembro.nombre}" data-points="${miembro.puntos}">Editar</button>
+                        <button class="delete-btn" data-id="${miembro.id}">Expulsar</button>
                     </td>
                 `;
             }
@@ -142,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Funciones de Autenticación y Lógica ---
     client.auth.onAuthStateChange((event, session) => {
         if (session) {
             handleLogin(session);
@@ -172,12 +191,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userProfile.rol === 'admin') {
             gruposSection.style.display = 'block';
             manageGroupSection.style.display = 'none';
-            // Pasa true para que muestre el botón de gestionar
             renderGrupos(true); 
         } else {
             currentGroupId = userProfile.id_grupo;
             if (currentGroupId) {
                  await renderGrupoParaGestion(currentGroupId, puedeEditar);
+            } else {
+                 console.error("El usuario no tiene un ID de grupo asignado.");
+                 handleLogout();
             }
         }
     }
@@ -187,11 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.style.display = 'none';
         gruposSection.style.display = 'block';
         manageGroupSection.style.display = 'none';
-        // Pasa false para que no muestre el botón de gestionar
         renderGrupos(false); 
     }
-
-    // --- Event Listeners ---
 
     loginBtn.addEventListener('click', async () => {
         const email = prompt("Ingresa tu correo:");
@@ -231,17 +249,36 @@ document.addEventListener('DOMContentLoaded', () => {
             memberNameInput.value = '';
         }
     });
+    
+    addMemberForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nombre = addMemberNameInput.value;
+        const puntos = parseInt(addMemberPointsInput.value);
+        const idEscuadra = addMemberEscuadraSelect.value;
+        
+        if (nombre && idEscuadra) {
+            const { error } = await client
+                .from('miembros_del_clan')
+                .insert({ nombre: nombre, puntos: puntos, id_escuadra: idEscuadra, id_grupo: currentGroupId });
+            
+            if (error) {
+                alert('Error al añadir miembro.');
+                console.error(error);
+            } else {
+                alert('Miembro añadido con éxito.');
+                await renderGrupoParaGestion(currentGroupId, true);
+            }
+            addMemberForm.reset();
+        }
+    });
 
-    // Delegación de eventos para la gestión de grupos, edición de miembros y expansión de escuadras
     document.addEventListener('click', async (e) => {
-        // Lógica para el botón "Gestionar" del líder principal
         if (e.target.classList.contains('manage-btn')) {
             const groupIdToManage = e.target.closest('tr').dataset.groupId;
             currentGroupId = groupIdToManage;
             await renderGrupoParaGestion(groupIdToManage, true);
         }
         
-        // Lógica para editar un miembro
         if (e.target.classList.contains('edit-btn')) {
             const memberId = e.target.dataset.id;
             const memberName = e.target.dataset.name;
@@ -251,14 +288,30 @@ document.addEventListener('DOMContentLoaded', () => {
             memberNameInput.value = memberName;
             memberPointsInput.value = memberPoints;
         }
+
+        if (e.target.classList.contains('delete-btn')) {
+            const memberId = e.target.dataset.id;
+            if (confirm('¿Estás seguro de que quieres expulsar a este miembro?')) {
+                const { error } = await client
+                    .from('miembros_del_clan')
+                    .delete()
+                    .eq('id', memberId);
+
+                if (error) {
+                    alert('Error al expulsar miembro.');
+                    console.error(error);
+                } else {
+                    alert('Miembro expulsado con éxito.');
+                    await renderGrupoParaGestion(currentGroupId, true);
+                }
+            }
+        }
         
-        // Lógica para expandir/contraer las escuadras
         const escuadraTab = e.target.closest('.escuadra-tab');
-        if (escuadraTab && !e.target.classList.contains('edit-btn')) { // Evita que el clic en "Editar" también expanda
+        if (escuadraTab && !e.target.classList.contains('edit-btn')) {
             escuadraTab.classList.toggle('expanded');
         }
     });
 
-    // Iniciar la aplicación en modo público
     renderGrupos(false);
 });
