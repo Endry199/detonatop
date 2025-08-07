@@ -27,6 +27,33 @@ let currentGroupId = null;
 let currentRole = null;
 let currentEscuadras = [];
 
+// Función para crear un perfil si no existe
+async function createProfileIfNotExists(userId) {
+    const { data, error } = await client
+        .from('perfiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
+    
+    // Si el error es de "0 rows" (PGRST116), significa que no hay perfil, lo creamos
+    if (error && error.code === 'PGRST116') { 
+        console.log('No se encontró perfil, creando uno nuevo...');
+        const { error: insertError } = await client
+            .from('perfiles')
+            .insert({ id: userId, rol: 'miembro' }); // Rol por defecto
+        
+        if (insertError) {
+            console.error('Error al crear el perfil:', insertError);
+            return false;
+        }
+    } else if (error) {
+        // Otros errores al buscar el perfil
+        console.error('Error al buscar el perfil:', error);
+        return false;
+    }
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     async function renderGrupos(isAdmin = false) {
@@ -40,9 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        gruposTableBody.innerHTML = '';
+        if (gruposTableBody) {
+            gruposTableBody.innerHTML = '';
+        }
         
-        // MODIFICACIÓN: Verificamos si el elemento existe antes de acceder a él.
         if (manageGroupHeader) {
             if (isAdmin) {
                 manageGroupHeader.style.display = 'table-cell';
@@ -63,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${gestionBtn}
             `;
             row.dataset.groupId = grupo.id;
-            gruposTableBody.appendChild(row);
+            if (gruposTableBody) gruposTableBody.appendChild(row);
         });
     }
 
@@ -181,6 +209,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleLogin(session) {
         if (loginBtn) loginBtn.style.display = 'none';
         if (logoutBtn) logoutBtn.style.display = 'block';
+
+        // Llama a la nueva función para asegurar que el perfil exista
+        const profileCreated = await createProfileIfNotExists(session.user.id);
+        if (!profileCreated) {
+            console.error("No se pudo crear o verificar el perfil del usuario.");
+            return handleLogout();
+        }
         
         const { data: userProfile, error } = await client
             .from('perfiles')
@@ -258,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('Puntos actualizados con éxito.');
                     await renderGrupoParaGestion(currentGroupId, (currentRole === 'lider' || currentRole === 'decano' || currentRole === 'admin'));
                 }
-                updateMemberForm.reset();
+                if (updateMemberForm) updateMemberForm.reset();
                 if (memberNameInput) memberNameInput.value = '';
             }
         });
@@ -283,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('Miembro añadido con éxito.');
                     await renderGrupoParaGestion(currentGroupId, true);
                 }
-                addMemberForm.reset();
+                if (addMemberForm) addMemberForm.reset();
             }
         });
     }
