@@ -330,6 +330,7 @@ footer {
     box-shadow: 0 0 15px var(--primary-color);
 }
 
+/* Media Query para la responsividad del botón de Editar */
 @media (max-width: 768px) {
     header {
         flex-direction: column;
@@ -338,5 +339,35 @@ footer {
 
     .forms-wrapper {
         flex-direction: column;
+    }
+
+    /* Asegura que la columna de acciones tenga espacio en la tabla de miembros */
+    .miembros-list td:nth-child(3),
+    .miembros-list th:nth-child(3) {
+        /* Fuerza a que la columna de acciones sea visible */
+        white-space: nowrap;
+        width: 1px;
+    }
+
+    /* Ajustes generales para la tabla en móviles */
+    .grupos-table th, .grupos-table td {
+        padding: 8px;
+        font-size: 14px;
+    }
+    
+    .miembros-list td, .miembros-list th {
+        padding: 6px;
+        font-size: 12px;
+    }
+
+    /* Ajusta el tamaño de los botones de edición */
+    .edit-btn, .save-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+    
+    .edit-input {
+        width: 60px;
+        font-size: 12px;
     }
 }
