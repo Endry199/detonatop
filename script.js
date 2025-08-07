@@ -76,15 +76,15 @@ async function renderGrupos() {
 async function ensureGroupStructure(groupId) {
     const { data: escuadras, error: escuadrasError } = await supabase
         .from('escuadras')
-        .select('*')
-        .eq('id_grupo', groupId);
+        .select(`*, miembros_del_clan (*)`)
+        .eq('id_grupo', groupId)
+        .order('id'); // Ordenar por ID para mantener consistencia
 
     if (escuadrasError) {
         console.error('Error al obtener escuadras para asegurar la estructura:', escuadrasError);
         return [];
     }
 
-    // Crear escuadras si no hay 3
     let updatedEscuadras = [...escuadras];
     const missingSquadsCount = 3 - escuadras.length;
     if (missingSquadsCount > 0) {
@@ -109,19 +109,10 @@ async function ensureGroupStructure(groupId) {
         }
     }
 
-    // Asegurar que cada escuadra tenga 4 miembros
     for (const escuadra of updatedEscuadras) {
-        const { data: miembros, error: miembrosError } = await supabase
-            .from('miembros_del_clan')
-            .select('*')
-            .eq('id_escuadra', escuadra.id);
-        
-        if (miembrosError) {
-            console.error('Error al obtener miembros para asegurar la estructura:', miembrosError);
-            continue;
-        }
-
+        const miembros = escuadra.miembros_del_clan;
         const missingMembersCount = 4 - miembros.length;
+
         if (missingMembersCount > 0) {
             const newMembersToInsert = [];
             for (let i = 0; i < missingMembersCount; i++) {
@@ -132,13 +123,9 @@ async function ensureGroupStructure(groupId) {
                     id_grupo: groupId
                 });
             }
-            const { error: insertMembersError } = await supabase
+            await supabase
                 .from('miembros_del_clan')
                 .insert(newMembersToInsert);
-
-            if (insertMembersError) {
-                console.error('Error al crear nuevos miembros:', insertMembersError);
-            }
         }
     }
 
@@ -146,28 +133,75 @@ async function ensureGroupStructure(groupId) {
     const { data: finalEscuadras, error: finalError } = await supabase
         .from('escuadras')
         .select(`
-            *,
+            id, nombre, puntos_totales, puntos_semanales,
             miembros_del_clan (
-                *
+                id, nombre, puntos
             )
         `)
-        .eq('id_grupo', groupId);
+        .eq('id_grupo', groupId)
+        .order('id');
 
     if (finalError) {
         console.error('Error al obtener la estructura final:', finalError);
         return [];
     }
+    
+    // ✅ NUEVA LÓGICA: Calcular y actualizar puntos de escuadras
+    let grupoPuntosTotales = 0;
+    for (const escuadra of finalEscuadras) {
+        let escuadraPuntosTotales = 0;
+        escuadra.miembros_del_clan.forEach(miembro => {
+            escuadraPuntosTotales += miembro.puntos;
+        });
+
+        // Actualizar puntos de la escuadra en la base de datos si es necesario
+        if (escuadraPuntosTotales !== escuadra.puntos_totales) {
+            await supabase
+                .from('escuadras')
+                .update({ puntos_totales: escuadraPuntosTotales })
+                .eq('id', escuadra.id);
+            escuadra.puntos_totales = escuadraPuntosTotales; // Actualizar el objeto local
+        }
+        grupoPuntosTotales += escuadraPuntosTotales;
+    }
+
+    // ✅ NUEVA LÓGICA: Actualizar puntos del grupo
+    await supabase
+        .from('grupos')
+        .update({ puntos_totales: grupoPuntosTotales })
+        .eq('id', groupId);
+
+    // Ordenar los miembros dentro de cada escuadra por puntos
+    finalEscuadras.forEach(escuadra => {
+        escuadra.miembros_del_clan.sort((a, b) => b.puntos - a.puntos);
+    });
 
     return finalEscuadras;
 }
 
 // Función para renderizar escuadras y miembros en la vista expandida
 async function renderEscuadrasEnGrupo(groupId, containerElement, puedeEditar) {
-    // Aseguramos que el grupo tenga la estructura completa antes de renderizar
     const escuadras = await ensureGroupStructure(groupId);
+    
+    // ✅ CORRECCIÓN: Volver a obtener los datos del grupo actualizado para mostrar los puntos correctos
+    const { data: grupo, error } = await supabase
+        .from('grupos')
+        .select('*')
+        .eq('id', groupId)
+        .single();
+    if (error) {
+        console.error('Error al obtener el grupo:', error);
+        return;
+    }
+    
+    // ✅ ACTUALIZACIÓN: Actualizar el puntaje del grupo en la fila principal
+    const groupRow = gruposTableBody.querySelector(`.group-row[data-group-id="${groupId}"]`);
+    if (groupRow) {
+        groupRow.querySelector('td:last-child').textContent = grupo.puntos_totales || 0;
+    }
 
     if (escuadras.length === 0) {
-        containerElement.innerHTML = `<td colspan="2">No hay escuadras en este grupo.</td>`;
+        containerElement.innerHTML = `<div class="escuadras-container"><p>No hay escuadras en este grupo.</p></div>`;
         return;
     }
 
@@ -207,7 +241,7 @@ async function renderEscuadrasEnGrupo(groupId, containerElement, puedeEditar) {
             </div>
         `;
     }
-    containerElement.innerHTML = `<td colspan="2"><div class="escuadras-container">${escuadrasHtml}</div></td>`;
+    containerElement.innerHTML = `<div class="escuadras-container">${escuadrasHtml}</div>`;
 }
 
 // Manejo de eventos
@@ -301,7 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (e.target.classList.contains('edit-btn')) {
             const row = e.target.closest('tr');
-            const miembroId = row.dataset.miembroId;
             const nombreSpan = row.querySelector('.miembro-nombre');
             const puntosSpan = row.querySelector('.miembro-puntos');
 
@@ -322,7 +355,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.classList.remove('edit-btn');
             e.target.classList.add('save-btn');
             
-            // ✅ CORRECCIÓN: Agregamos 'return' para evitar que se ejecute la lógica de "Guardar"
             return;
         }
 
@@ -344,9 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Error al guardar cambios.');
                 console.error(error);
             } else {
-                // ✅ CAMBIO: Se elimina el alert para una mejor experiencia de usuario
-                const groupId = row.closest('.expanded-content').dataset.groupId;
-                const container = row.closest('.expanded-content').querySelector('td');
+                const expandedRow = row.closest('.expanded-content');
+                const groupId = expandedRow.dataset.groupId;
+                const container = expandedRow.querySelector('td');
                 const puedeEditar = (currentRole === 'admin') || (['lider', 'decano'].includes(currentRole) && currentGroupId == groupId);
                 await renderEscuadrasEnGrupo(groupId, container, puedeEditar);
             }
