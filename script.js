@@ -10,46 +10,31 @@ const gruposTableBody = document.getElementById('grupos-table-body');
 const manageGroupSection = document.getElementById('manage-group-section');
 const manageGroupTitle = document.getElementById('manage-group-title');
 const escuadrasList = document.getElementById('escuadras-list');
-const updateMemberForm = document.getElementById('update-member-form');
-const addMemberForm = document.getElementById('add-member-form');
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
-const memberIdInput = document.getElementById('member-id');
-const memberNameInput = document.getElementById('member-name');
-const memberPointsInput = document.getElementById('member-points');
-const addMemberNameInput = document.getElementById('add-member-name');
-const addMemberPointsInput = document.getElementById('add-member-points');
-const addMemberEscuadraSelect = document.getElementById('add-member-escuadra');
-const manageGroupHeader = document.getElementById('manage-group-header');
 const backToGroupsBtn = document.getElementById('back-to-groups-btn');
-const addMemberSection = document.getElementById('add-member-section');
-const updateMemberSection = document.getElementById('update-member-section');
 
 let currentGroupId = null;
 let currentRole = null;
 let currentEscuadras = [];
 
-// Función para crear un perfil si no existe (solución corregida)
+// Función para crear un perfil si no existe
 async function createProfileIfNotExists(userId) {
-    // Primero, intenta buscar el perfil
     const { data, error } = await client
         .from('perfiles')
         .select('id')
         .eq('id', userId);
 
-    // Si no se encuentra el perfil, crea uno nuevo
     if (!data || data.length === 0) {
-        console.log('No se encontró perfil, creando uno nuevo...');
         const { error: insertError } = await client
             .from('perfiles')
-            .insert({ id: userId, rol: 'miembro' }); // Rol por defecto
+            .insert({ id: userId, rol: 'miembro' }); 
         
         if (insertError) {
             console.error('Error al crear el perfil:', insertError);
             return false;
         }
     } else if (error) {
-        // Otros errores al buscar el perfil
         console.error('Error al buscar el perfil:', error);
         return false;
     }
@@ -102,7 +87,55 @@ async function renderGrupos(isAdmin = false) {
     });
 }
 
-// Función para renderizar las escuadras y miembros dentro de un grupo (en la vista de gestión)
+// Función para renderizar las escuadras y miembros dentro de un grupo (en la tabla principal)
+async function renderEscuadrasEnGrupo(groupId, containerElement) {
+    const { data: escuadras, error } = await client
+        .from('escuadras')
+        .select('*')
+        .eq('id_grupo', groupId);
+
+    if (error) {
+        containerElement.innerHTML = `<td colspan="3">Error al cargar las escuadras.</td>`;
+        console.error('Error al obtener las escuadras:', error);
+        return;
+    }
+
+    if (escuadras.length === 0) {
+        containerElement.innerHTML = `<td colspan="3">No hay escuadras en este grupo.</td>`;
+        return;
+    }
+
+    let escuadrasHtml = '';
+    for (const escuadra of escuadras) {
+        const { data: miembros, error: miembrosError } = await client
+            .from('miembros_del_clan')
+            .select('*')
+            .eq('id_escuadra', escuadra.id)
+            .order('puntos', { ascending: false });
+
+        if (miembrosError) {
+            console.error('Error al obtener los miembros:', miembrosError);
+            continue;
+        }
+
+        const miembrosHtml = miembros.map(miembro => `
+            <div class="miembro-item">
+                <span>${miembro.nombre}</span>
+                <span>${miembro.puntos} pts.</span>
+            </div>
+        `).join('');
+
+        escuadrasHtml += `
+            <div class="escuadra-detail">
+                <h4>${escuadra.nombre} (Puntos: ${escuadra.puntos_totales})</h4>
+                <div class="miembros-list">${miembrosHtml}</div>
+            </div>
+        `;
+    }
+    containerElement.innerHTML = escuadrasHtml;
+}
+
+// Función para renderizar la vista de gestión (con edición en línea)
 async function renderGrupoParaGestion(idGrupo, puedeEditar) {
     if (!manageGroupSection || !escuadrasList) return;
 
@@ -135,22 +168,13 @@ async function renderGrupoParaGestion(idGrupo, puedeEditar) {
     }
     
     currentEscuadras = escuadras;
-    
-    if (addMemberEscuadraSelect) {
-        addMemberEscuadraSelect.innerHTML = '<option value="">Selecciona Escuadra</option>';
-        escuadras.forEach(escuadra => {
-            const option = document.createElement('option');
-            option.value = escuadra.id;
-            option.textContent = escuadra.nombre;
-            addMemberEscuadraSelect.appendChild(option);
-        });
-    }
-    
     escuadrasList.innerHTML = '';
-    escuadras.forEach(escuadra => {
+
+    for (const escuadra of escuadras) {
         const escuadraDiv = document.createElement('div');
-        escuadraDiv.className = 'escuadra-tab';
+        escuadraDiv.className = 'escuadra-tab expanded';
         escuadraDiv.dataset.id = escuadra.id;
+        
         escuadraDiv.innerHTML = `
             <h3 class="escuadra-name">${escuadra.nombre}</h3>
             <p class="escuadra-points">Puntos: ${escuadra.puntos_totales || 0} | Semanal: ${escuadra.puntos_semanales || 0}</p>
@@ -165,13 +189,14 @@ async function renderGrupoParaGestion(idGrupo, puedeEditar) {
                     </thead>
                     <tbody id="miembros-table-body-${escuadra.id}"></tbody>
                 </table>
+                ${puedeEditar ? `<button class="add-member-btn" data-escuadra-id="${escuadra.id}">Añadir Miembro</button>` : ''}
             </div>
         `;
         escuadrasList.appendChild(escuadraDiv);
-        renderMiembrosEnEscuadra(escuadra.id, `miembros-table-body-${escuadra.id}`, puedeEditar);
-    });
+        await renderMiembrosEnEscuadra(escuadra.id, `miembros-table-body-${escuadra.id}`, puedeEditar);
+    }
 }
-
+    
 // Función para renderizar miembros dentro de una escuadra
 async function renderMiembrosEnEscuadra(idEscuadra, bodyId, puedeEditar) {
     const { data: miembros, error } = await client
@@ -189,30 +214,42 @@ async function renderMiembrosEnEscuadra(idEscuadra, bodyId, puedeEditar) {
     if (!miembrosBody) return;
     
     miembrosBody.innerHTML = '';
-    miembros.forEach(miembro => {
-        const row = document.createElement('tr');
-        let actionsCell = '';
-        if (puedeEditar) {
-            actionsCell = `
-                <td class="actions-cell">
-                    <button class="edit-btn" data-id="${miembro.id}" data-name="${miembro.nombre}" data-points="${miembro.puntos}">Editar</button>
-                    <button class="delete-btn" data-id="${miembro.id}">Expulsar</button>
-                </td>
-            `;
-        }
-        row.innerHTML = `
-            <td>${miembro.nombre}</td>
-            <td>${miembro.puntos}</td>
-            ${actionsCell}
+    
+    // Si no hay miembros, añadir un espacio vacío para rellenar
+    if (miembros.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td>N/A</td>
+            <td>0</td>
+            ${puedeEditar ? `<td><button class="add-member-btn" data-escuadra-id="${idEscuadra}">Añadir Miembro</button></td>` : ''}
         `;
-        miembrosBody.appendChild(row);
-    });
+        miembrosBody.appendChild(emptyRow);
+    } else {
+        miembros.forEach(miembro => {
+            const row = document.createElement('tr');
+            row.dataset.miembroId = miembro.id;
+            let actionsCell = '';
+            if (puedeEditar) {
+                actionsCell = `
+                    <td class="actions-cell">
+                        <button class="edit-btn" data-id="${miembro.id}">Editar</button>
+                        <button class="delete-btn" data-id="${miembro.id}">Expulsar</button>
+                    </td>
+                `;
+            }
+            row.innerHTML = `
+                <td><span class="miembro-nombre">${miembro.nombre}</span></td>
+                <td><span class="miembro-puntos">${miembro.puntos}</span></td>
+                ${actionsCell}
+            `;
+            miembrosBody.appendChild(row);
+        });
+    }
 }
 
 // Manejo de eventos
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Manejar el estado de autenticación
     client.auth.onAuthStateChange((event, session) => {
         if (session) {
             handleLogin(session);
@@ -221,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Lógica para usuarios autenticados
     async function handleLogin(session) {
         if(loginBtn) loginBtn.style.display = 'none';
         if(logoutBtn) logoutBtn.style.display = 'block';
@@ -246,9 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
         currentRole = userProfile.rol;
         const puedeEditar = ['lider', 'decano', 'admin'].includes(currentRole);
 
-        if (addMemberSection) addMemberSection.style.display = puedeEditar ? 'block' : 'none';
-        if (updateMemberSection) updateMemberSection.style.display = puedeEditar ? 'block' : 'none';
-
         if (currentRole === 'admin') {
             await renderGrupos(true);
         } else {
@@ -263,12 +296,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Lógica para usuarios no autenticados
     function handleLogout() {
         if (loginBtn) loginBtn.style.display = 'block';
         if (logoutBtn) logoutBtn.style.display = 'none';
-        if (addMemberSection) addMemberSection.style.display = 'none';
-        if (updateMemberSection) updateMemberSection.style.display = 'none';
         renderGrupos(false); 
     }
 
@@ -298,55 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (updateMemberForm) {
-        updateMemberForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const miembroId = memberIdInput.value;
-            const puntos = parseInt(memberPointsInput.value);
-
-            if (miembroId && !isNaN(puntos)) {
-                const { error } = await client
-                    .from('miembros_del_clan')
-                    .update({ puntos: puntos })
-                    .eq('id', miembroId);
-
-                if (error) {
-                    alert('Error al actualizar: Es posible que no tengas permiso o el ID no sea válido.');
-                    console.error(error);
-                } else {
-                    alert('Puntos actualizados con éxito.');
-                    await renderGrupoParaGestion(currentGroupId, ['lider', 'decano', 'admin'].includes(currentRole));
-                }
-                updateMemberForm.reset();
-                memberNameInput.value = '';
-            }
-        });
-    }
-    
-    if (addMemberForm) {
-        addMemberForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const nombre = addMemberNameInput.value;
-            const puntos = parseInt(addMemberPointsInput.value);
-            const idEscuadra = addMemberEscuadraSelect.value;
-            
-            if (nombre && idEscuadra) {
-                const { error } = await client
-                    .from('miembros_del_clan')
-                    .insert({ nombre: nombre, puntos: puntos, id_escuadra: idEscuadra, id_grupo: currentGroupId });
-                
-                if (error) {
-                    alert('Error al añadir miembro.');
-                    console.error(error);
-                } else {
-                    alert('Miembro añadido con éxito.');
-                    await renderGrupoParaGestion(currentGroupId, true);
-                }
-                addMemberForm.reset();
-            }
-        });
-    }
-
     document.addEventListener('click', async (e) => {
         if (e.target.classList.contains('manage-btn')) {
             const groupIdToManage = e.target.dataset.groupId;
@@ -363,22 +344,63 @@ document.addEventListener('DOMContentLoaded', () => {
             if (expandedRow) {
                 expandedRow.classList.toggle('hidden');
                 if (!expandedRow.classList.contains('hidden')) {
-                    await renderEscuadrasEnGrupo(groupId, expandedRow.querySelector('td'));
+                    const expandedContentTd = expandedRow.querySelector('td');
+                    await renderEscuadrasEnGrupo(groupId, expandedContentTd);
                 }
             }
             return;
         }
         
         if (e.target.classList.contains('edit-btn')) {
-            const memberId = e.target.dataset.id;
-            const memberName = e.target.dataset.name;
-            const memberPoints = e.target.dataset.points;
-            
-            if (memberIdInput) memberIdInput.value = memberId;
-            if (memberNameInput) memberNameInput.value = memberName;
-            if (memberPointsInput) memberPointsInput.value = memberPoints;
+            const row = e.target.closest('tr');
+            const miembroId = row.dataset.miembroId;
+            const nombreSpan = row.querySelector('.miembro-nombre');
+            const puntosSpan = row.querySelector('.miembro-puntos');
+
+            // Crear campos de entrada
+            const nombreInput = document.createElement('input');
+            nombreInput.type = 'text';
+            nombreInput.value = nombreSpan.textContent;
+            nombreInput.className = 'edit-input';
+
+            const puntosInput = document.createElement('input');
+            puntosInput.type = 'number';
+            puntosInput.value = puntosSpan.textContent;
+            puntosInput.className = 'edit-input';
+
+            // Reemplazar spans con inputs
+            nombreSpan.replaceWith(nombreInput);
+            puntosSpan.replaceWith(puntosInput);
+
+            // Cambiar botón de 'Editar' a 'Guardar'
+            e.target.textContent = 'Guardar';
+            e.target.classList.remove('edit-btn');
+            e.target.classList.add('save-btn');
         }
 
+        if (e.target.classList.contains('save-btn')) {
+            const row = e.target.closest('tr');
+            const miembroId = row.dataset.miembroId;
+            const nombreInput = row.querySelector('input[type="text"]');
+            const puntosInput = row.querySelector('input[type="number"]');
+            
+            const nuevoNombre = nombreInput.value;
+            const nuevosPuntos = parseInt(puntosInput.value);
+
+            const { error } = await client
+                .from('miembros_del_clan')
+                .update({ nombre: nuevoNombre, puntos: nuevosPuntos })
+                .eq('id', miembroId);
+            
+            if (error) {
+                alert('Error al guardar cambios.');
+                console.error(error);
+            } else {
+                alert('Miembro actualizado con éxito.');
+                await renderGrupoParaGestion(currentGroupId, true);
+            }
+        }
+        
         if (e.target.classList.contains('delete-btn')) {
             const memberId = e.target.dataset.id;
             if (confirm('¿Estás seguro de que quieres expulsar a este miembro?')) {
@@ -396,13 +418,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-        
-        const escuadraTab = e.target.closest('.escuadra-tab');
-        if (escuadraTab && !e.target.closest('button')) {
-            const miembrosSection = escuadraTab.querySelector('.miembros-section');
-            if (miembrosSection) {
-                miembrosSection.classList.toggle('expanded');
+
+        if (e.target.classList.contains('add-member-btn')) {
+            const escuadraId = e.target.dataset.escuadraId;
+            const tableBody = e.target.closest('.miembros-section').querySelector('tbody');
+
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td><input type="text" placeholder="Nombre" class="new-member-name"></td>
+                <td><input type="number" placeholder="Puntos" class="new-member-points"></td>
+                <td>
+                    <button class="save-new-member-btn" data-escuadra-id="${escuadraId}">Guardar</button>
+                    <button class="cancel-new-member-btn">Cancelar</button>
+                </td>
+            `;
+            tableBody.appendChild(newRow);
+            e.target.style.display = 'none'; // Ocultar el botón de añadir para evitar duplicados
+        }
+
+        if (e.target.classList.contains('save-new-member-btn')) {
+            const row = e.target.closest('tr');
+            const escuadraId = e.target.dataset.escuadraId;
+            const nombre = row.querySelector('.new-member-name').value;
+            const puntos = parseInt(row.querySelector('.new-member-points').value);
+
+            if (nombre && !isNaN(puntos)) {
+                 const { error } = await client
+                    .from('miembros_del_clan')
+                    .insert({ nombre, puntos, id_escuadra: escuadraId, id_grupo: currentGroupId });
+
+                if (error) {
+                    alert('Error al añadir miembro.');
+                    console.error(error);
+                } else {
+                    alert('Miembro añadido con éxito.');
+                    await renderGrupoParaGestion(currentGroupId, true);
+                }
+            } else {
+                alert('Por favor, ingresa un nombre y puntos válidos.');
             }
+        }
+        
+        if (e.target.classList.contains('cancel-new-member-btn')) {
+            const row = e.target.closest('tr');
+            const parentSection = row.closest('.miembros-section');
+            const addBtn = parentSection.querySelector('.add-member-btn');
+            
+            row.remove();
+            if (addBtn) addBtn.style.display = 'block';
         }
     });
 
