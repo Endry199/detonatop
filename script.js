@@ -1,19 +1,27 @@
 // Estas son tus claves de proyecto de Supabase
 const supabaseUrl = 'https://nihwpbxkwrndxubpqkes.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImV4cCI6MjA3MDE0MzcwOH0.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImexdHAiOjIwNzA2MjA1MDh00k.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Elementos del DOM
+const gruposSection = document.getElementById('grupos-table-section');
+const gruposTableBody = document.getElementById('grupos-table-body');
+const manageGroupSection = document.getElementById('manage-group-section');
+const manageGroupTitle = document.getElementById('manage-group-title');
+const escuadrasList = document.getElementById('escuadras-list');
+const updateMemberForm = document.getElementById('update-member-form');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const memberIdInput = document.getElementById('member-id');
+const memberNameInput = document.getElementById('member-name');
+const memberPointsInput = document.getElementById('member-points');
+
+let currentGroupId = null;
+let currentRole = null;
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    const gruposTableBody = document.getElementById('grupos-table-body');
-    const miembrosTableBody = document.getElementById('miembros-table-body');
-    const manageGroupSection = document.getElementById('manage-group-section');
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const updateMemberForm = document.getElementById('update-member-form');
-    
-    // --- Funciones de renderizado ---
-
+    // --- Funciones de Renderizado ---
     async function renderGrupos() {
         const { data: grupos, error } = await supabase
             .from('grupos')
@@ -31,17 +39,70 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = `
                 <td>${grupo.nombre}</td>
                 <td>${grupo.puntos_totales || 0}</td>
-                <td class="actions-cell" style="display: none;"></td>
             `;
             gruposTableBody.appendChild(row);
         });
     }
 
-    async function renderMiembrosDelGrupo(idGrupo, puedeEditar) {
+    async function renderGrupoParaGestion(idGrupo, puedeEditar) {
+        gruposSection.style.display = 'none';
+        manageGroupSection.style.display = 'block';
+
+        const { data: grupo, error: grupoError } = await supabase
+            .from('grupos')
+            .select('*')
+            .eq('id', idGrupo)
+            .single();
+        
+        if (grupoError) {
+            console.error('Error al obtener el grupo:', grupoError);
+            return;
+        }
+        
+        manageGroupTitle.textContent = `${grupo.nombre} | Puntos Totales: ${grupo.puntos_totales || 0}`;
+
+        const { data: escuadras, error: escuadrasError } = await supabase
+            .from('escuadras')
+            .select('*')
+            .eq('id_grupo', idGrupo);
+
+        if (escuadrasError) {
+            console.error('Error al obtener las escuadras:', escuadrasError);
+            return;
+        }
+
+        escuadrasList.innerHTML = '';
+        escuadras.forEach(escuadra => {
+            const escuadraDiv = document.createElement('div');
+            escuadraDiv.className = 'escuadra-tab';
+            escuadraDiv.dataset.id = escuadra.id;
+            escuadraDiv.innerHTML = `
+                <h3 class="escuadra-name">${escuadra.nombre}</h3>
+                <p class="escuadra-points">Puntos: ${escuadra.puntos_totales || 0} | Semanal: ${escuadra.puntos_semanales || 0}</p>
+                <div class="miembros-section">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Puntos</th>
+                                ${puedeEditar ? '<th>Acciones</th>' : ''}
+                            </tr>
+                        </thead>
+                        <tbody id="miembros-table-body-${escuadra.id}"></tbody>
+                    </table>
+                </div>
+            `;
+            escuadrasList.appendChild(escuadraDiv);
+
+            renderMiembrosEnEscuadra(escuadra.id, `miembros-table-body-${escuadra.id}`, puedeEditar);
+        });
+    }
+    
+    async function renderMiembrosEnEscuadra(idEscuadra, bodyId, puedeEditar) {
         const { data: miembros, error } = await supabase
             .from('miembros_del_clan')
             .select('*')
-            .eq('id_grupo', idGrupo)
+            .eq('id_escuadra', idEscuadra)
             .order('puntos', { ascending: false });
 
         if (error) {
@@ -49,15 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        miembrosTableBody.innerHTML = '';
+        const miembrosBody = document.getElementById(bodyId);
+        miembrosBody.innerHTML = '';
         miembros.forEach(miembro => {
             const row = document.createElement('tr');
             let actionsCell = '';
             if (puedeEditar) {
                 actionsCell = `
-                    <td>
-                        <button class="edit-btn" data-id="${miembro.id}">Editar</button>
-                        <button class="delete-btn" data-id="${miembro.id}">Expulsar</button>
+                    <td class="actions-cell">
+                        <button class="edit-btn" data-id="${miembro.id}" data-name="${miembro.nombre}" data-points="${miembro.puntos}">Editar</button>
                     </td>
                 `;
             }
@@ -66,13 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${miembro.puntos}</td>
                 ${actionsCell}
             `;
-            miembrosTableBody.appendChild(row);
+            miembrosBody.appendChild(row);
         });
     }
 
-    // --- Funciones de autenticación ---
-    
-    // Escucha los cambios de autenticación para saber si un usuario inicia o cierra sesión
+    // --- Funciones de Autenticación y Lógica ---
     supabase.auth.onAuthStateChange((event, session) => {
         if (session) {
             handleLogin(session);
@@ -84,9 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleLogin(session) {
         loginBtn.style.display = 'none';
         logoutBtn.style.display = 'block';
-        manageGroupSection.style.display = 'block';
-        document.querySelectorAll('.actions-header, .actions-cell').forEach(el => el.style.display = 'table-cell');
-
+        
         const { data: userProfile, error } = await supabase
             .from('perfiles')
             .select('rol, id_grupo')
@@ -97,41 +154,35 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error al obtener el perfil del usuario:', error);
             return;
         }
+        
+        currentRole = userProfile.rol;
 
         const puedeEditar = (userProfile.rol === 'lider' || userProfile.rol === 'decano' || userProfile.rol === 'admin');
-        const idGrupo = (userProfile.rol !== 'admin') ? userProfile.id_grupo : null;
+        currentGroupId = (userProfile.rol !== 'admin') ? userProfile.id_grupo : null;
         
-        // Renderizar la tabla del grupo si el usuario no es admin
-        if (idGrupo) {
-             await renderMiembrosDelGrupo(idGrupo, puedeEditar);
-        }
-
-        // Si el usuario es el líder principal (admin), puede gestionar todos los grupos
-        if (userProfile.rol === 'admin') {
-            console.log('Admin logeado. Acceso total a la gestión de grupos.');
-            // Aquí podrías agregar lógica para que el admin pueda seleccionar un grupo para gestionar
+        if (currentGroupId) {
+             await renderGrupoParaGestion(currentGroupId, puedeEditar);
+        } else if (currentRole === 'admin') {
+            console.log('Admin logeado. Aquí puedes mostrar una vista para que elijas qué grupo gestionar.');
+            // Implementa aquí la lógica para que el admin elija un grupo.
         }
     }
 
     function handleLogout() {
         loginBtn.style.display = 'block';
         logoutBtn.style.display = 'none';
+        gruposSection.style.display = 'block';
         manageGroupSection.style.display = 'none';
-        document.querySelectorAll('.actions-header, .actions-cell').forEach(el => el.style.display = 'none');
         renderGrupos(); // Volver a la vista pública
     }
-    
-    // --- Lógica del botón de inicio de sesión (CORREGIDO) ---
+
+    // --- Event Listeners ---
+
     loginBtn.addEventListener('click', async () => {
         const email = prompt("Ingresa tu correo:");
         const password = prompt("Ingresa tu contraseña:");
-
         if (email && password) {
-            const { error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
-
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
                 alert("Error al iniciar sesión: verifica tu correo y contraseña.");
                 console.error(error);
@@ -143,34 +194,43 @@ document.addEventListener('DOMContentLoaded', () => {
         await supabase.auth.signOut();
     });
 
-    // --- Funciones de gestión de datos ---
-
     updateMemberForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const nombre = document.getElementById('member-name').value;
-        const puntos = parseInt(document.getElementById('member-points').value);
+        const miembroId = memberIdInput.value;
+        const puntos = parseInt(memberPointsInput.value);
 
-        if (nombre && !isNaN(puntos)) {
-            // Lógica para actualizar en Supabase
+        if (miembroId && !isNaN(puntos)) {
             const { error } = await supabase
                 .from('miembros_del_clan')
                 .update({ puntos: puntos })
-                .eq('nombre', nombre);
+                .eq('id', miembroId);
 
             if (error) {
-                alert('Error al actualizar: Es posible que no tengas permiso o que el nombre no exista.');
+                alert('Error al actualizar: Es posible que no tengas permiso o el ID no sea válido.');
+                console.error(error);
             } else {
                 alert('Puntos actualizados con éxito.');
-                // Recargar la tabla (CORREGIDO)
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    const { data: perfil } = await supabase.from('perfiles').select('id_grupo').eq('id', session.user.id).single();
-                    if (perfil) {
-                        await renderMiembrosDelGrupo(perfil.id_grupo, true);
-                    }
-                }
+                await renderGrupoParaGestion(currentGroupId, (currentRole === 'lider' || currentRole === 'decano' || currentRole === 'admin'));
             }
             updateMemberForm.reset();
+            memberNameInput.value = '';
+        }
+    });
+
+    manageGroupSection.addEventListener('click', (e) => {
+        if (e.target.classList.contains('edit-btn')) {
+            const memberId = e.target.dataset.id;
+            const memberName = e.target.dataset.name;
+            const memberPoints = e.target.dataset.points;
+            
+            memberIdInput.value = memberId;
+            memberNameInput.value = memberName;
+            memberPointsInput.value = memberPoints;
+        }
+        
+        const escuadraTab = e.target.closest('.escuadra-tab');
+        if (escuadraTab) {
+            escuadraTab.classList.toggle('expanded');
         }
     });
 
