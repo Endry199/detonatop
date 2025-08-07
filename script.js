@@ -1,8 +1,8 @@
-// Estas son tus claves de proyecto de Supabase
+// Claves de proyecto de Supabase
 const supabaseUrl = 'https://nihwpbxkwrndxubpqkes.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImV4cCI6MjA3MDE0MzcwOH0.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
 
-// Accedemos a createClient directamente del objeto global 'supabase'
+// Accedemos a createClient a través del objeto global 'supabase'
 const { createClient } = supabase;
 const client = createClient(supabaseUrl, supabaseKey);
 
@@ -25,7 +25,7 @@ let currentRole = null;
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- Funciones de Renderizado ---
-    async function renderGrupos() {
+    async function renderGrupos(isAdmin = false) {
         const { data: grupos, error } = await client
             .from('grupos')
             .select('*')
@@ -39,10 +39,17 @@ document.addEventListener('DOMContentLoaded', () => {
         gruposTableBody.innerHTML = '';
         grupos.forEach(grupo => {
             const row = document.createElement('tr');
+            let gestionBtn = '';
+            if (isAdmin) {
+                gestionBtn = `<td><button class="manage-btn">Gestionar</button></td>`;
+            }
             row.innerHTML = `
                 <td>${grupo.nombre}</td>
                 <td>${grupo.puntos_totales || 0}</td>
+                ${gestionBtn}
             `;
+            // Agrega el ID del grupo a la fila para poder gestionarlo
+            row.dataset.groupId = grupo.id;
             gruposTableBody.appendChild(row);
         });
     }
@@ -97,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             escuadrasList.appendChild(escuadraDiv);
 
+            // Cargar los miembros para cada escuadra
             renderMiembrosEnEscuadra(escuadra.id, `miembros-table-body-${escuadra.id}`, puedeEditar);
         });
     }
@@ -159,14 +167,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         currentRole = userProfile.rol;
-
         const puedeEditar = (userProfile.rol === 'lider' || userProfile.rol === 'decano' || userProfile.rol === 'admin');
-        currentGroupId = (userProfile.rol !== 'admin') ? userProfile.id_grupo : null;
-        
-        if (currentGroupId) {
-             await renderGrupoParaGestion(currentGroupId, puedeEditar);
-        } else if (currentRole === 'admin') {
-            console.log('Admin logeado. Aquí puedes mostrar una vista para que elijas qué grupo gestionar.');
+
+        if (userProfile.rol === 'admin') {
+            gruposSection.style.display = 'block';
+            manageGroupSection.style.display = 'none';
+            // Pasa true para que muestre el botón de gestionar
+            renderGrupos(true); 
+        } else {
+            currentGroupId = userProfile.id_grupo;
+            if (currentGroupId) {
+                 await renderGrupoParaGestion(currentGroupId, puedeEditar);
+            }
         }
     }
 
@@ -175,7 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.style.display = 'none';
         gruposSection.style.display = 'block';
         manageGroupSection.style.display = 'none';
-        renderGrupos();
+        // Pasa false para que no muestre el botón de gestionar
+        renderGrupos(false); 
     }
 
     // --- Event Listeners ---
@@ -219,7 +232,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    manageGroupSection.addEventListener('click', (e) => {
+    // Delegación de eventos para la gestión de grupos, edición de miembros y expansión de escuadras
+    document.addEventListener('click', async (e) => {
+        // Lógica para el botón "Gestionar" del líder principal
+        if (e.target.classList.contains('manage-btn')) {
+            const groupIdToManage = e.target.closest('tr').dataset.groupId;
+            currentGroupId = groupIdToManage;
+            await renderGrupoParaGestion(groupIdToManage, true);
+        }
+        
+        // Lógica para editar un miembro
         if (e.target.classList.contains('edit-btn')) {
             const memberId = e.target.dataset.id;
             const memberName = e.target.dataset.name;
@@ -230,11 +252,13 @@ document.addEventListener('DOMContentLoaded', () => {
             memberPointsInput.value = memberPoints;
         }
         
+        // Lógica para expandir/contraer las escuadras
         const escuadraTab = e.target.closest('.escuadra-tab');
-        if (escuadraTab) {
+        if (escuadraTab && !e.target.classList.contains('edit-btn')) { // Evita que el clic en "Editar" también expanda
             escuadraTab.classList.toggle('expanded');
         }
     });
 
-    renderGrupos();
+    // Iniciar la aplicación en modo público
+    renderGrupos(false);
 });
