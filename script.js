@@ -18,7 +18,6 @@ const escuadrasList = document.getElementById('escuadras-list');
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const backToGroupsBtn = document.getElementById('back-to-groups-btn');
-const manageGroupHeader = document.querySelector('.actions-header');
 
 let currentGroupId = null;
 let currentRole = null;
@@ -50,7 +49,7 @@ async function createProfileIfNotExists(userId) {
 }
 
 // Función para renderizar todos los grupos en la tabla principal
-async function renderGrupos(isAdmin = false) {
+async function renderGrupos() {
     if (!gruposTableBody) return;
 
     gruposSection.style.display = 'block';
@@ -63,28 +62,18 @@ async function renderGrupos(isAdmin = false) {
 
     if (error) {
         console.error('Error al obtener los grupos:', error);
-        gruposTableBody.innerHTML = '<tr><td colspan="3">Error al cargar los grupos.</td></tr>';
+        gruposTableBody.innerHTML = '<tr><td colspan="2">Error al cargar los grupos.</td></tr>';
         return;
     }
 
     gruposTableBody.innerHTML = '';
-    if (manageGroupHeader) {
-        manageGroupHeader.style.display = isAdmin ? 'table-cell' : 'none';
-    }
 
     grupos.forEach(grupo => {
         const row = document.createElement('tr');
         row.classList.add('group-row');
-        let gestionBtn = '';
-        if (isAdmin) {
-            gestionBtn = `<td class="actions-cell"><button class="manage-btn" data-group-id="${grupo.id}">Gestionar</button></td>`;
-        } else {
-            gestionBtn = `<td class="actions-cell" style="display: none;"></td>`;
-        }
         row.innerHTML = `
             <td>${grupo.nombre}</td>
             <td>${grupo.puntos_totales || 0}</td>
-            ${gestionBtn}
         `;
         row.dataset.groupId = grupo.id;
         gruposTableBody.appendChild(row);
@@ -92,7 +81,7 @@ async function renderGrupos(isAdmin = false) {
         const expandedRow = document.createElement('tr');
         expandedRow.classList.add('expanded-content', 'hidden');
         expandedRow.dataset.groupId = grupo.id;
-        expandedRow.innerHTML = `<td colspan="${isAdmin ? 3 : 2}"><div class="loading">Cargando...</div></td>`;
+        expandedRow.innerHTML = `<td colspan="2"><div class="loading">Cargando...</div></td>`;
         gruposTableBody.appendChild(expandedRow);
     });
 }
@@ -105,13 +94,13 @@ async function renderEscuadrasEnGrupo(groupId, containerElement) {
         .eq('id_grupo', groupId);
 
     if (error) {
-        containerElement.innerHTML = `<td colspan="3">Error al cargar las escuadras.</td>`;
+        containerElement.innerHTML = `<td colspan="2">Error al cargar las escuadras.</td>`;
         console.error('Error al obtener las escuadras:', error);
         return;
     }
 
     if (escuadras.length === 0) {
-        containerElement.innerHTML = `<td colspan="3">No hay escuadras en este grupo.</td>`;
+        containerElement.innerHTML = `<td colspan="2">No hay escuadras en este grupo.</td>`;
         return;
     }
 
@@ -352,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const puedeEditar = ['lider', 'decano', 'admin'].includes(currentRole);
 
         if (currentRole === 'admin') {
-            await renderGrupos(true);
+            await renderGrupos();
         } else {
             currentGroupId = userProfile.id_grupo;
             if (currentGroupId) {
@@ -368,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleLogout() {
         if (loginBtn) loginBtn.style.display = 'block';
         if (logoutBtn) logoutBtn.style.display = 'none';
-        renderGrupos(false); 
+        renderGrupos(); 
     }
 
     if (loginBtn) {
@@ -393,31 +382,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (backToGroupsBtn) {
         backToGroupsBtn.addEventListener('click', async () => {
-            await renderGrupos(currentRole === 'admin');
+            await renderGrupos();
         });
     }
 
     document.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('manage-btn')) {
-            const groupIdToManage = e.target.dataset.groupId;
-            currentGroupId = groupIdToManage;
-            await renderGrupoParaGestion(groupIdToManage, true);
-            return;
-        }
-
         const groupRow = e.target.closest('.group-row');
-        if (groupRow && !e.target.classList.contains('manage-btn')) {
+        if (groupRow) {
             const groupId = groupRow.dataset.groupId;
-            const expandedRow = gruposTableBody.querySelector(`.expanded-content[data-group-id="${groupId}"]`);
-            
-            if (expandedRow) {
-                expandedRow.classList.toggle('hidden');
-                if (!expandedRow.classList.contains('hidden')) {
-                    const expandedContentTd = expandedRow.querySelector('td');
-                    await renderEscuadrasEnGrupo(groupId, expandedContentTd);
+
+            if (currentRole === 'admin') {
+                // Si es admin, ir a la vista de gestión para ese grupo
+                currentGroupId = groupId;
+                await renderGrupoParaGestion(groupId, true);
+                return;
+            } else {
+                // Para usuarios no admin, expandir la fila para ver los detalles
+                const expandedRow = gruposTableBody.querySelector(`.expanded-content[data-group-id="${groupId}"]`);
+                
+                if (expandedRow) {
+                    expandedRow.classList.toggle('hidden');
+                    if (!expandedRow.classList.contains('hidden')) {
+                        const expandedContentTd = expandedRow.querySelector('td');
+                        await renderEscuadrasEnGrupo(groupId, expandedContentTd);
+                    }
                 }
+                return;
             }
-            return;
         }
         
         if (e.target.classList.contains('edit-btn')) {
@@ -489,5 +480,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    renderGrupos(false);
+    renderGrupos();
 });
