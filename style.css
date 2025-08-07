@@ -10,6 +10,8 @@
     --text-muted: #ccc;
     --border-color: #555;
     --glow-color: #9b59b6;
+    --danger-color: #e74c3c;
+    --edit-color: #f39c12;
 }
 
 body {
@@ -42,6 +44,11 @@ header {
 header h1 {
     margin: 0;
     text-shadow: 0 0 10px var(--glow-color);
+}
+
+.user-controls {
+    display: flex;
+    gap: 10px;
 }
 
 .user-controls button {
@@ -104,9 +111,54 @@ th {
     letter-spacing: 1px;
 }
 
-tr:hover {
+/* Estilo para las filas de grupo y las expandidas */
+.group-row {
+    cursor: pointer;
+}
+
+.group-row:hover {
     background-color: #333333;
     transition: background-color 0.2s ease-in-out;
+}
+
+.expanded-content.hidden {
+    display: none;
+}
+
+.expanded-content td {
+    padding: 0;
+}
+
+.expanded-content .escuadra-detail {
+    background-color: #3a3a3a;
+    padding: 15px;
+    border-top: 1px solid var(--border-color);
+    margin-bottom: 10px;
+    border-radius: 0 0 8px 8px;
+}
+
+.expanded-content .escuadra-detail h4 {
+    margin: 0 0 10px 0;
+    font-size: 1em;
+    color: var(--secondary-color);
+    text-shadow: 0 0 3px var(--glow-color);
+}
+
+.expanded-content .miembros-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.expanded-content .miembro-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px;
+    border-bottom: 1px solid #4a4a4a;
+    font-size: 0.9em;
+}
+
+.expanded-content .miembro-item:last-child {
+    border-bottom: none;
 }
 
 .form-container {
@@ -118,13 +170,20 @@ tr:hover {
     border: 1px solid var(--border-color);
 }
 
+.forms-wrapper {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
 .form-container form {
     display: flex;
+    flex-direction: column;
     gap: 10px;
 }
 
-.form-container input {
-    flex-grow: 1;
+.form-container input,
+.form-container select {
     padding: 10px;
     border: 1px solid var(--border-color);
     background-color: var(--background-light);
@@ -133,7 +192,8 @@ tr:hover {
     transition: box-shadow 0.3s;
 }
 
-.form-container input:focus {
+.form-container input:focus,
+.form-container select:focus {
     outline: none;
     box-shadow: 0 0 10px var(--glow-color);
 }
@@ -156,8 +216,16 @@ tr:hover {
     transform: scale(1.05);
 }
 
+.manage-btn {
+    background-color: var(--secondary-color);
+}
+
+.manage-btn:hover {
+    background-color: #6a3ab2;
+}
+
 .edit-btn {
-    background-color: #4a90e2; /* Azul para el botón de editar */
+    background-color: var(--edit-color);
     color: #fff;
     border: none;
     padding: 8px 12px;
@@ -168,7 +236,23 @@ tr:hover {
 }
 
 .edit-btn:hover {
-    background-color: #3b7ad6;
+    background-color: #c78000;
+    transform: scale(1.05);
+}
+
+.delete-btn {
+    background-color: var(--danger-color);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: all 0.3s ease-in-out;
+}
+
+.delete-btn:hover {
+    background-color: #b94031;
     transform: scale(1.05);
 }
 
@@ -212,9 +296,29 @@ tr:hover {
 }
 
 .escuadra-tab.expanded .miembros-section {
-    max-height: 500px; /* Ajustar según sea necesario para mostrar la tabla */
+    max-height: 500px;
     transition: max-height 0.5s ease-in;
 }
+
+/* Otros elementos del DOM */
+#back-to-groups-btn {
+    background-color: var(--background-light);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-bottom: 20px;
+    transition: all 0.3s ease-in-out;
+}
+
+#back-to-groups-btn:hover {
+    background-color: #4a4a4a;
+    color: white;
+    transform: scale(1.05);
+}
+
 
 footer {
     text-align: center;
@@ -232,7 +336,7 @@ footer {
         gap: 10px;
     }
 
-    .form-container form {
+    .forms-wrapper {
         flex-direction: column;
     }
 }

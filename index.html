@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ＤｅｔｏｎａㅤＴｏｐ</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="script.js" type="module" defer></script>
 </head>
 <body>
     <header>
@@ -26,6 +24,7 @@
                         <tr>
                             <th>Grupo</th>
                             <th>Puntos Totales</th>
+                            <th id="manage-group-header" style="display: none;"></th>
                         </tr>
                     </thead>
                     <tbody id="grupos-table-body"></tbody>
@@ -35,18 +34,33 @@
 
         <section id="manage-group-section" style="display: none;">
             <h2 id="manage-group-title"></h2>
-            
-            <div class="form-container">
-                <form id="update-member-form">
-                    <input type="hidden" id="member-id"> 
-                    <input type="text" id="member-name" placeholder="Nombre del Miembro" readonly>
-                    <input type="number" id="member-points" placeholder="Puntos">
-                    <button type="submit">Actualizar Puntos</button>
-                </form>
+            <button id="back-to-groups-btn">Volver a la tabla de grupos</button>
+
+            <div class="forms-wrapper">
+                <div class="form-container">
+                    <h3>Añadir Nuevo Miembro</h3>
+                    <form id="add-member-form">
+                        <input type="text" id="add-member-name" placeholder="Nombre del Miembro" required>
+                        <input type="number" id="add-member-points" placeholder="Puntos iniciales" value="0">
+                        <select id="add-member-escuadra" required>
+                            <option value="">Selecciona una Escuadra</option>
+                        </select>
+                        <button type="submit">Añadir Miembro</button>
+                    </form>
+                </div>
+
+                <div class="form-container">
+                    <h3>Actualizar Puntos</h3>
+                    <form id="update-member-form">
+                        <input type="hidden" id="member-id"> 
+                        <input type="text" id="member-name" placeholder="Nombre del Miembro" readonly>
+                        <input type="number" id="member-points" placeholder="Puntos">
+                        <button type="submit">Actualizar Puntos</button>
+                    </form>
+                </div>
             </div>
 
-            <div id="escuadras-list" class="escuadras-container">
-                </div>
+            <div id="escuadras-list" class="escuadras-container"></div>
         </section>
     </main>
 
