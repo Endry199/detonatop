@@ -1,40 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+:root {
+    --primary-color: #5a189a;
+    --secondary-color: #8a45e0;
+    --background-dark: #1a1a1a;
+    --background-medium: #2a2a2a;
+    --background-light: #3a3a3a;
+    --text-color: #f5f5f5;
+    --text-muted: #ccc;
+    --border-color: #555;
+    --glow-color: #9b59b6;
+}
+
 body {
-    font-family: 'Arial', sans-serif;
-    background-color: #1a1a1a;
-    color: #f5f5f5;
+    font-family: 'Orbitron', sans-serif;
+    background-color: var(--background-dark);
+    color: var(--text-color);
     margin: 0;
     padding: 0;
     line-height: 1.6;
+    animation: fadeIn 1.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 header {
-    background-color: #2a2a2a;
+    background-color: var(--background-medium);
     color: #fff;
     padding: 1rem 2rem;
     text-align: center;
-    border-bottom: 2px solid #5a189a;
+    border-bottom: 2px solid var(--primary-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 0 15px var(--primary-color);
 }
 
 header h1 {
     margin: 0;
+    text-shadow: 0 0 10px var(--glow-color);
 }
 
 .user-controls button {
-    background-color: #5a189a;
+    background-color: var(--primary-color);
     color: #fff;
     border: none;
     padding: 10px 15px;
     cursor: pointer;
     border-radius: 5px;
     font-weight: bold;
-    transition: background-color 0.3s;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 0 5px var(--glow-color);
 }
 
 .user-controls button:hover {
-    background-color: #7b2cbf;
+    background-color: var(--secondary-color);
+    box-shadow: 0 0 15px var(--glow-color);
+    transform: scale(1.05);
 }
 
 main {
@@ -43,19 +68,21 @@ main {
     margin: auto;
 }
 
-.table-container {
-    background-color: #2a2a2a;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-    margin-bottom: 2rem;
-}
-
 h2 {
-    color: #8a45e0;
-    border-bottom: 2px solid #5a189a;
+    color: var(--secondary-color);
+    border-bottom: 2px solid var(--primary-color);
     padding-bottom: 10px;
     margin-top: 0;
+    text-shadow: 0 0 5px var(--glow-color);
+}
+
+.table-container {
+    background-color: var(--background-medium);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
 }
 
 table {
@@ -66,26 +93,29 @@ table {
 
 th, td {
     padding: 12px 15px;
-    border-bottom: 1px solid #3a3a3a;
+    border-bottom: 1px solid var(--background-light);
 }
 
 th {
-    background-color: #3a3a3a;
+    background-color: var(--background-light);
     font-weight: bold;
-    color: #ccc;
+    color: var(--text-muted);
     text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 tr:hover {
     background-color: #333333;
+    transition: background-color 0.2s ease-in-out;
 }
 
 .form-container {
-    background-color: #2a2a2a;
+    background-color: var(--background-medium);
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
     margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
 }
 
 .form-container form {
@@ -96,40 +126,113 @@ tr:hover {
 .form-container input {
     flex-grow: 1;
     padding: 10px;
-    border: 1px solid #555;
-    background-color: #3a3a3a;
-    color: #f5f5f5;
+    border: 1px solid var(--border-color);
+    background-color: var(--background-light);
+    color: var(--text-color);
     border-radius: 5px;
+    transition: box-shadow 0.3s;
+}
+
+.form-container input:focus {
+    outline: none;
+    box-shadow: 0 0 10px var(--glow-color);
 }
 
 .form-container button {
     padding: 10px 20px;
-    background-color: #5a189a;
+    background-color: var(--primary-color);
     color: #fff;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    transition: background-color 0.3s;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 0 5px var(--glow-color);
 }
 
 .form-container button:hover {
-    background-color: #7b2cbf;
+    background-color: var(--secondary-color);
+    box-shadow: 0 0 15px var(--glow-color);
+    transform: scale(1.05);
 }
 
-.delete-btn {
-    background-color: #e53935;
+.edit-btn {
+    background-color: #4a90e2; /* Azul para el botón de editar */
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: all 0.3s ease-in-out;
 }
 
-.delete-btn:hover {
-    background-color: #d32f2f;
+.edit-btn:hover {
+    background-color: #3b7ad6;
+    transform: scale(1.05);
+}
+
+/* Estilos de las Escuadras */
+.escuadras-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.escuadra-tab {
+    background-color: var(--background-medium);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--border-color);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+}
+
+.escuadra-tab:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+}
+
+.escuadra-name {
+    margin: 0 0 5px 0;
+    color: var(--secondary-color);
+    text-shadow: 0 0 5px var(--glow-color);
+}
+
+.escuadra-points {
+    margin: 0 0 15px 0;
+    color: var(--text-muted);
+}
+
+.miembros-section {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease-out;
+}
+
+.escuadra-tab.expanded .miembros-section {
+    max-height: 500px; /* Ajustar según sea necesario para mostrar la tabla */
+    transition: max-height 0.5s ease-in;
 }
 
 footer {
     text-align: center;
     padding: 1rem;
-    background-color: #2a2a2a;
-    border-top: 2px solid #5a189a;
-    color: #999;
+    background-color: var(--background-medium);
+    border-top: 2px solid var(--primary-color);
+    color: var(--text-muted);
     margin-top: 2rem;
+    box-shadow: 0 0 15px var(--primary-color);
+}
+
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .form-container form {
+        flex-direction: column;
+    }
 }
