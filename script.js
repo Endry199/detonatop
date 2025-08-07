@@ -14,65 +14,65 @@ let currentGroupId = null;
 
 // Función para crear un perfil si no existe
 async function createProfileIfNotExists(userId) {
-    const { data, error } = await supabase
-        .from('perfiles')
-        .select('id')
-        .eq('id', userId);
+    const { data, error } = await supabase
+        .from('perfiles')
+        .select('id')
+        .eq('id', userId);
 
-    if (error && error.code !== 'PGRST116') {
-        console.error('Error al buscar el perfil:', error);
-        return false;
-    }
+    if (error && error.code !== 'PGRST116') {
+        console.error('Error al buscar el perfil:', error);
+        return false;
+    }
 
-    if (!data || data.length === 0) {
-        const { error: insertError } = await supabase
-            .from('perfiles')
-            .insert({ id: userId, rol: 'miembro' }); 
-        
-        if (insertError) {
-            console.error('Error al crear el perfil:', insertError);
-            return false;
-        }
-    }
-    return true;
+    if (!data || data.length === 0) {
+        const { error: insertError } = await supabase
+            .from('perfiles')
+            .insert({ id: userId, rol: 'miembro' }); 
+        
+        if (insertError) {
+            console.error('Error al crear el perfil:', insertError);
+            return false;
+        }
+    }
+    return true;
 }
 
 // Función para renderizar todos los grupos en la tabla principal
 async function renderGrupos() {
-    if (!gruposTableBody) return;
+    if (!gruposTableBody) return;
 
-    const { data: grupos, error } = await supabase
-        .from('grupos')
-        .select('*')
-        .order('puntos_totales', { ascending: false });
+    const { data: grupos, error } = await supabase
+        .from('grupos')
+        .select('*')
+        .order('puntos_totales', { ascending: false });
 
-    if (error) {
-        console.error('Error al obtener los grupos:', error);
-        gruposTableBody.innerHTML = '<tr><td colspan="2">Error al cargar los grupos.</td></tr>';
-        return;
-    }
+    if (error) {
+        console.error('Error al obtener los grupos:', error);
+        gruposTableBody.innerHTML = '<tr><td colspan="2">Error al cargar los grupos.</td></tr>';
+        return;
+    }
 
-    gruposTableBody.innerHTML = '';
+    gruposTableBody.innerHTML = '';
 
-    grupos.forEach(grupo => {
-        const row = document.createElement('tr');
-        row.classList.add('group-row');
-        row.innerHTML = `
-            <td>${grupo.nombre}</td>
-            <td>${grupo.puntos_totales || 0}</td>
-        `;
-        row.dataset.groupId = grupo.id;
-        gruposTableBody.appendChild(row);
+    grupos.forEach(grupo => {
+        const row = document.createElement('tr');
+        row.classList.add('group-row');
+        row.innerHTML = `
+            <td>${grupo.nombre}</td>
+            <td>${grupo.puntos_totales || 0}</td>
+        `;
+        row.dataset.groupId = grupo.id;
+        gruposTableBody.appendChild(row);
 
-        const expandedRow = document.createElement('tr');
-        expandedRow.classList.add('expanded-content', 'hidden');
-        expandedRow.dataset.groupId = grupo.id;
-        expandedRow.innerHTML = `<td colspan="2"><div class="loading">Cargando...</div></td>`;
-        gruposTableBody.appendChild(expandedRow);
-    });
+        const expandedRow = document.createElement('tr');
+        expandedRow.classList.add('expanded-content', 'hidden');
+        expandedRow.dataset.groupId = grupo.id;
+        expandedRow.innerHTML = `<td colspan="2"><div class="loading">Cargando...</div></td>`;
+        gruposTableBody.appendChild(expandedRow);
+    });
 }
 
-// Función auxiliar para asegurar que el grupo tenga 3 escuadras y 4 miembros cada una
+// Función auxiliar para asegurar la estructura de escuadras y miembros
 async function ensureGroupStructure(groupId) {
     // Definir la estructura por defecto y personalizada
     let targetSquads = 3;
@@ -85,8 +85,8 @@ async function ensureGroupStructure(groupId) {
     if (gruposError) {
         console.error('Error al obtener la lista de grupos:', gruposError);
     } else {
-        const manuelGroup = grupos.find(g => g.nombre === 'manuel');
-        const frenyedGroup = grupos.find(g => g.nombre === 'frenyed');
+        const manuelGroup = grupos.find(g => g.nombre.toLowerCase() === 'manuel');
+        const frenyedGroup = grupos.find(g => g.nombre.toLowerCase() === 'frenyed');
 
         if (manuelGroup && groupId === manuelGroup.id) {
             targetSquads = 2;
@@ -98,9 +98,9 @@ async function ensureGroupStructure(groupId) {
     }
 
     // Obtener escuadras existentes
-    const { data: escuadras, error: escuadrasError } = await supabase
+    const { data: existingSquads, error: escuadrasError } = await supabase
         .from('escuadras')
-        .select(`*, miembros_del_clan (*)`)
+        .select(`id, nombre`)
         .eq('id_grupo', groupId)
         .order('id');
 
@@ -109,55 +109,36 @@ async function ensureGroupStructure(groupId) {
         return [];
     }
 
-    // Crear escuadras si no hay suficientes
-    let updatedEscuadras = [...escuadras];
-    const missingSquadsCount = targetSquads - escuadras.length;
+    // 1. Eliminar escuadras sobrantes
+    if (existingSquads.length > targetSquads) {
+        const squadsToDelete = existingSquads.slice(targetSquads).map(s => s.id);
+        if (squadsToDelete.length > 0) {
+            await supabase
+                .from('escuadras')
+                .delete()
+                .in('id', squadsToDelete);
+        }
+    }
+    
+    // 2. Crear escuadras si faltan
+    const missingSquadsCount = targetSquads - existingSquads.length;
     if (missingSquadsCount > 0) {
         const newSquadsToInsert = [];
         for (let i = 0; i < missingSquadsCount; i++) {
             newSquadsToInsert.push({ 
-                nombre: `Escuadra ${escuadras.length + 1 + i}`,
+                nombre: `Escuadra ${existingSquads.length + 1 + i}`,
                 id_grupo: groupId,
                 puntos_totales: 0,
                 puntos_semanales: 0
             });
         }
-        const { data: newSquads, error: insertSquadsError } = await supabase
+        await supabase
             .from('escuadras')
             .insert(newSquadsToInsert)
             .select();
-        
-        if (insertSquadsError) {
-            console.error('Error al crear nuevas escuadras:', insertSquadsError);
-        } else {
-            updatedEscuadras = [...updatedEscuadras, ...newSquads];
-        }
     }
 
-    // Asegurar que cada escuadra tenga el número de miembros correcto
-    for (let i = 0; i < updatedEscuadras.length; i++) {
-        const escuadra = updatedEscuadras[i];
-        const miembros = escuadra.miembros_del_clan;
-        const targetMembers = memberCounts[i] || 4; // Usar el conteo personalizado o el predeterminado
-        const missingMembersCount = targetMembers - miembros.length;
-
-        if (missingMembersCount > 0) {
-            const newMembersToInsert = [];
-            for (let j = 0; j < missingMembersCount; j++) {
-                newMembersToInsert.push({
-                    nombre: 'N/A',
-                    puntos: 0,
-                    id_escuadra: escuadra.id,
-                    id_grupo: groupId
-                });
-            }
-            await supabase
-                .from('miembros_del_clan')
-                .insert(newMembersToInsert);
-        }
-    }
-
-    // Volver a obtener todas las escuadras y miembros para el renderizado final
+    // Obtener escuadras y miembros finales
     const { data: finalEscuadras, error: finalError } = await supabase
         .from('escuadras')
         .select(`
@@ -173,10 +154,62 @@ async function ensureGroupStructure(groupId) {
         console.error('Error al obtener la estructura final:', finalError);
         return [];
     }
+
+    // 3. Ajustar el número de miembros en cada escuadra
+    for (let i = 0; i < finalEscuadras.length; i++) {
+        const escuadra = finalEscuadras[i];
+        const miembros = escuadra.miembros_del_clan;
+        const targetMembers = memberCounts[i] || 4;
+        const missingMembersCount = targetMembers - miembros.length;
+
+        // Eliminar miembros sobrantes
+        if (miembros.length > targetMembers) {
+            const membersToDelete = miembros.slice(targetMembers).map(m => m.id);
+            if (membersToDelete.length > 0) {
+                await supabase
+                    .from('miembros_del_clan')
+                    .delete()
+                    .in('id', membersToDelete);
+            }
+        }
+
+        // Añadir miembros faltantes
+        if (missingMembersCount > 0) {
+            const newMembersToInsert = [];
+            for (let j = 0; j < missingMembersCount; j++) {
+                newMembersToInsert.push({
+                    nombre: 'N/A',
+                    puntos: 0,
+                    id_escuadra: escuadra.id,
+                    id_grupo: groupId
+                });
+            }
+            await supabase
+                .from('miembros_del_clan')
+                .insert(newMembersToInsert);
+        }
+    }
     
-    // Calcular y actualizar puntos de escuadras y grupo
+    // Volver a obtener la estructura para asegurar los datos correctos
+    const { data: finalFinalEscuadras, error: finalFinalError } = await supabase
+        .from('escuadras')
+        .select(`
+            id, nombre, puntos_totales, puntos_semanales,
+            miembros_del_clan (
+                id, nombre, puntos
+            )
+        `)
+        .eq('id_grupo', groupId)
+        .order('id');
+    
+    if(finalFinalError) {
+        console.error('Error al obtener la estructura final:', finalFinalError);
+        return [];
+    }
+    
+    // 4. Calcular y actualizar puntos de escuadras y grupo
     let grupoPuntosTotales = 0;
-    for (const escuadra of finalEscuadras) {
+    for (const escuadra of finalFinalEscuadras) {
         let escuadraPuntosTotales = 0;
         escuadra.miembros_del_clan.forEach(miembro => {
             escuadraPuntosTotales += miembro.puntos;
@@ -197,12 +230,11 @@ async function ensureGroupStructure(groupId) {
         .update({ puntos_totales: grupoPuntosTotales })
         .eq('id', groupId);
 
-    // Ordenar los miembros dentro de cada escuadra por puntos
-    finalEscuadras.forEach(escuadra => {
+    finalFinalEscuadras.forEach(escuadra => {
         escuadra.miembros_del_clan.sort((a, b) => b.puntos - a.puntos);
     });
 
-    return finalEscuadras;
+    return finalFinalEscuadras;
 }
 
 // Función para renderizar escuadras y miembros en la vista expandida
@@ -404,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const groupId = expandedRow.dataset.groupId;
                 const container = expandedRow.querySelector('td');
                 const puedeEditar = (currentRole === 'admin') || (['lider', 'decano'].includes(currentRole) && currentGroupId == groupId);
-                await renderGrupos(); // Recargar la tabla principal para actualizar los puntos
+                await renderGrupos();
                 await renderEscuadrasEnGrupo(groupId, container, puedeEditar);
             }
         }
