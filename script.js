@@ -1,181 +1,479 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/esm/index.js';
 
-// Estas son tus claves de proyecto de Supabase
+// Claves de proyecto de Supabase
 const supabaseUrl = 'https://nihwpbxkwrndxubpqkes.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImV4cCI6MjA3MDE0MzcwOH0.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Elementos del DOM
+const gruposTableBody = document.getElementById('grupos-table-body');
+const gruposSection = document.getElementById('grupos-table-section');
+const manageGroupSection = document.getElementById('manage-group-section');
+const manageGroupTitle = document.getElementById('manage-group-title');
+const escuadrasList = document.getElementById('escuadras-list');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const backToGroupsBtn = document.getElementById('back-to-groups-btn');
+const manageGroupHeader = document.querySelector('.actions-header'); // Elemento que faltaba
+
+let currentGroupId = null;
+let currentRole = null;
+let currentEscuadras = [];
+
+// Función para crear un perfil si no existe
+async function createProfileIfNotExists(userId) {
+    const { data, error } = await supabase
+        .from('perfiles')
+        .select('id')
+        .eq('id', userId);
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 es "no row found"
+        console.error('Error al buscar el perfil:', error);
+        return false;
+    }
+
+    if (!data || data.length === 0) {
+        const { error: insertError } = await supabase
+            .from('perfiles')
+            .insert({ id: userId, rol: 'miembro' }); 
+        
+        if (insertError) {
+            console.error('Error al crear el perfil:', insertError);
+            return false;
+        }
+    }
+    return true;
+}
+
+// Función para renderizar todos los grupos en la tabla principal
+async function renderGrupos(isAdmin = false) {
+    if (!gruposTableBody) return;
+
+    gruposSection.style.display = 'block';
+    manageGroupSection.style.display = 'none';
+
+    const { data: grupos, error } = await supabase
+        .from('grupos')
+        .select('*')
+        .order('puntos_totales', { ascending: false });
+
+    if (error) {
+        console.error('Error al obtener los grupos:', error);
+        gruposTableBody.innerHTML = '<tr><td colspan="3">Error al cargar los grupos.</td></tr>';
+        return;
+    }
+
+    gruposTableBody.innerHTML = '';
+    if (manageGroupHeader) {
+        manageGroupHeader.style.display = isAdmin ? 'table-cell' : 'none';
+    }
+
+    grupos.forEach(grupo => {
+        const row = document.createElement('tr');
+        row.classList.add('group-row');
+        let gestionBtn = '';
+        if (isAdmin) {
+            gestionBtn = `<td class="actions-cell"><button class="manage-btn" data-group-id="${grupo.id}">Gestionar</button></td>`;
+        } else {
+            gestionBtn = `<td class="actions-cell" style="display: none;"></td>`;
+        }
+        row.innerHTML = `
+            <td>${grupo.nombre}</td>
+            <td>${grupo.puntos_totales || 0}</td>
+            ${gestionBtn}
+        `;
+        row.dataset.groupId = grupo.id;
+        gruposTableBody.appendChild(row);
+
+        const expandedRow = document.createElement('tr');
+        expandedRow.classList.add('expanded-content', 'hidden');
+        expandedRow.dataset.groupId = grupo.id;
+        expandedRow.innerHTML = `<td colspan="${isAdmin ? 3 : 2}"><div class="loading">Cargando...</div></td>`;
+        gruposTableBody.appendChild(expandedRow);
+    });
+}
+
+// Función para renderizar las escuadras y miembros dentro de un grupo (en la tabla principal)
+async function renderEscuadrasEnGrupo(groupId, containerElement) {
+    const { data: escuadras, error } = await supabase
+        .from('escuadras')
+        .select('*')
+        .eq('id_grupo', groupId);
+
+    if (error) {
+        containerElement.innerHTML = `<td colspan="3">Error al cargar las escuadras.</td>`;
+        console.error('Error al obtener las escuadras:', error);
+        return;
+    }
+
+    if (escuadras.length === 0) {
+        containerElement.innerHTML = `<td colspan="3">No hay escuadras en este grupo.</td>`;
+        return;
+    }
+
+    let escuadrasHtml = '';
+    for (const escuadra of escuadras) {
+        const { data: miembros, error: miembrosError } = await supabase
+            .from('miembros_del_clan')
+            .select('*')
+            .eq('id_escuadra', escuadra.id)
+            .order('puntos', { ascending: false });
+
+        if (miembrosError) {
+            console.error('Error al obtener los miembros:', miembrosError);
+            continue;
+        }
+
+        const miembrosHtml = miembros.map(miembro => `
+            <div class="miembro-item">
+                <span>${miembro.nombre}</span>
+                <span>${miembro.puntos} pts.</span>
+            </div>
+        `).join('');
+
+        escuadrasHtml += `
+            <div class="escuadra-detail">
+                <h4>${escuadra.nombre} (Puntos: ${escuadra.puntos_totales})</h4>
+                <div class="miembros-list">${miembrosHtml}</div>
+            </div>
+        `;
+    }
+    containerElement.innerHTML = `<div class="escuadras-container">${escuadrasHtml}</div>`;
+}
+
+// Función para renderizar la vista de gestión (con edición en línea)
+async function renderGrupoParaGestion(idGrupo, puedeEditar) {
+    if (!manageGroupSection || !escuadrasList) return;
+
+    gruposSection.style.display = 'none';
+    manageGroupSection.style.display = 'block';
+
+    const { data: grupo, error: grupoError } = await supabase
+        .from('grupos')
+        .select('*')
+        .eq('id', idGrupo)
+        .single();
+    
+    if (grupoError) {
+        console.error('Error al obtener el grupo:', grupoError);
+        manageGroupTitle.textContent = 'Error al cargar el grupo.';
+        return;
+    }
+    
+    manageGroupTitle.textContent = `Gestión de ${grupo.nombre} | Puntos Totales: ${grupo.puntos_totales || 0}`;
+
+    const { data: escuadras, error: escuadrasError } = await supabase
+        .from('escuadras')
+        .select('*')
+        .eq('id_grupo', idGrupo);
+
+    if (escuadrasError) {
+        console.error('Error al obtener las escuadras:', escuadrasError);
+        escuadrasList.innerHTML = '<p>Error al cargar las escuadras.</p>';
+        return;
+    }
+    
+    currentEscuadras = escuadras;
+    escuadrasList.innerHTML = '';
+
+    for (const escuadra of escuadras) {
+        const escuadraDiv = document.createElement('div');
+        escuadraDiv.className = 'escuadra-tab expanded';
+        escuadraDiv.dataset.id = escuadra.id;
+        
+        escuadraDiv.innerHTML = `
+            <h3 class="escuadra-name">${escuadra.nombre}</h3>
+            <p class="escuadra-points">Puntos: ${escuadra.puntos_totales || 0} | Semanal: ${escuadra.puntos_semanales || 0}</p>
+            <div class="miembros-section">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Puntos</th>
+                            ${puedeEditar ? '<th>Acciones</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody id="miembros-table-body-${escuadra.id}"></tbody>
+                </table>
+                ${puedeEditar ? `<button class="add-member-btn" data-escuadra-id="${escuadra.id}">Añadir Miembro</button>` : ''}
+            </div>
+        `;
+        escuadrasList.appendChild(escuadraDiv);
+        await renderMiembrosEnEscuadra(escuadra.id, `miembros-table-body-${escuadra.id}`, puedeEditar);
+    }
+}
+    
+// Función para renderizar miembros dentro de una escuadra
+async function renderMiembrosEnEscuadra(idEscuadra, bodyId, puedeEditar) {
+    const { data: miembros, error } = await supabase
+        .from('miembros_del_clan')
+        .select('*')
+        .eq('id_escuadra', idEscuadra)
+        .order('puntos', { ascending: false });
+
+    if (error) {
+        console.error('Error al obtener los miembros:', error);
+        return;
+    }
+
+    const miembrosBody = document.getElementById(bodyId);
+    if (!miembrosBody) return;
+    
+    miembrosBody.innerHTML = '';
+    
+    // Si no hay miembros, añadir un espacio vacío para rellenar
+    if (miembros.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td>N/A</td>
+            <td>0</td>
+            ${puedeEditar ? `<td><button class="add-member-btn" data-escuadra-id="${idEscuadra}">Añadir Miembro</button></td>` : ''}
+        `;
+        miembrosBody.appendChild(emptyRow);
+    } else {
+        miembros.forEach(miembro => {
+            const row = document.createElement('tr');
+            row.dataset.miembroId = miembro.id;
+            let actionsCell = '';
+            if (puedeEditar) {
+                actionsCell = `
+                    <td class="actions-cell">
+                        <button class="edit-btn" data-id="${miembro.id}">Editar</button>
+                        <button class="delete-btn" data-id="${miembro.id}">Expulsar</button>
+                    </td>
+                `;
+            }
+            row.innerHTML = `
+                <td><span class="miembro-nombre">${miembro.nombre}</span></td>
+                <td><span class="miembro-puntos">${miembro.puntos}</span></td>
+                ${actionsCell}
+            `;
+            miembrosBody.appendChild(row);
+        });
+    }
+}
+
+// Manejo de eventos
 document.addEventListener('DOMContentLoaded', () => {
 
-    const gruposTableBody = document.getElementById('grupos-table-body');
-    const miembrosTableBody = document.getElementById('miembros-table-body');
-    const manageGroupSection = document.getElementById('manage-group-section');
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const updateMemberForm = document.getElementById('update-member-form');
-    
-    // --- Funciones de renderizado ---
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (session) {
+            handleLogin(session);
+        } else {
+            handleLogout();
+        }
+    });
 
-    async function renderGrupos() {
-        const { data: grupos, error } = await supabase
-            .from('grupos')
-            .select('*')
-            .order('puntos_totales', { ascending: false });
+    async function handleLogin(session) {
+        if(loginBtn) loginBtn.style.display = 'none';
+        if(logoutBtn) logoutBtn.style.display = 'block';
 
-        if (error) {
-            console.error('Error al obtener los grupos:', error);
-            return;
-        }
+        const profileCreated = await createProfileIfNotExists(session.user.id);
+        if (!profileCreated) {
+            console.error("No se pudo crear o verificar el perfil del usuario.");
+            return handleLogout();
+        }
+        
+        const { data: userProfile, error } = await supabase
+            .from('perfiles')
+            .select('rol, id_grupo')
+            .eq('id', session.user.id)
+            .single();
 
-        gruposTableBody.innerHTML = '';
-        grupos.forEach(grupo => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${grupo.nombre}</td>
-                <td>${grupo.puntos_totales || 0}</td>
-                <td class="actions-cell" style="display: none;"></td>
-            `;
-            gruposTableBody.appendChild(row);
-        });
-    }
+        if (error) {
+            console.error('Error al obtener el perfil del usuario:', error);
+            return;
+        }
+        
+        currentRole = userProfile.rol;
+        const puedeEditar = ['lider', 'decano', 'admin'].includes(currentRole);
 
-    async function renderMiembrosDelGrupo(idGrupo, puedeEditar) {
-        const { data: miembros, error } = await supabase
-            .from('miembros_del_clan')
-            .select('*')
-            .eq('id_grupo', idGrupo)
-            .order('puntos', { ascending: false });
+        if (currentRole === 'admin') {
+            await renderGrupos(true);
+        } else {
+            currentGroupId = userProfile.id_grupo;
+            if (currentGroupId) {
+                 await renderGrupoParaGestion(currentGroupId, puedeEditar);
+            } else {
+                 console.error("El usuario no tiene un ID de grupo asignado.");
+                 alert("Tu usuario no tiene un grupo asignado. Contacta a un administrador.");
+                 handleLogout();
+            }
+        }
+    }
 
-        if (error) {
-            console.error('Error al obtener los miembros:', error);
-            return;
-        }
+    function handleLogout() {
+        if (loginBtn) loginBtn.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+        renderGrupos(false); 
+    }
 
-        miembrosTableBody.innerHTML = '';
-        miembros.forEach(miembro => {
-            const row = document.createElement('tr');
-            let actionsCell = '';
-            if (puedeEditar) {
-                actionsCell = `
-                    <td>
-                        <button class="edit-btn" data-id="${miembro.id}">Editar</button>
-                        <button class="delete-btn" data-id="${miembro.id}">Expulsar</button>
-                    </td>
-                `;
-            }
-            row.innerHTML = `
-                <td>${miembro.nombre}</td>
-                <td>${miembro.puntos}</td>
-                ${actionsCell}
-            `;
-            miembrosTableBody.appendChild(row);
-        });
-    }
+    if (loginBtn) {
+        loginBtn.addEventListener('click', async () => {
+            const email = prompt("Ingresa tu correo:");
+            const password = prompt("Ingresa tu contraseña:");
+            if (email && password) {
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) {
+                    alert(`Error al iniciar sesión: ${error.message}`);
+                    console.error(error);
+                }
+            }
+        });
+    }
 
-    // --- Funciones de autenticación ---
-    
-    // Escucha los cambios de autenticación para saber si un usuario inicia o cierra sesión
-    supabase.auth.onAuthStateChange((event, session) => {
-        if (session) {
-            handleLogin(session);
-        } else {
-            handleLogout();
-        }
-    });
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            await supabase.auth.signOut();
+        });
+    }
 
-    async function handleLogin(session) {
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'block';
-        manageGroupSection.style.display = 'block';
-        document.querySelectorAll('.actions-header, .actions-cell').forEach(el => el.style.display = 'table-cell');
+    if (backToGroupsBtn) {
+        backToGroupsBtn.addEventListener('click', async () => {
+            await renderGrupos(currentRole === 'admin');
+        });
+    }
 
-        const { data: userProfile, error } = await supabase
-            .from('perfiles')
-            .select('rol, id_grupo')
-            .eq('id', session.user.id)
-            .single();
+    document.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('manage-btn')) {
+            const groupIdToManage = e.target.dataset.groupId;
+            currentGroupId = groupIdToManage;
+            await renderGrupoParaGestion(groupIdToManage, true);
+            return;
+        }
 
-        if (error) {
-            console.error('Error al obtener el perfil del usuario:', error);
-            return;
-        }
+        const groupRow = e.target.closest('.group-row');
+        if (groupRow && !e.target.classList.contains('manage-btn')) {
+            const groupId = groupRow.dataset.groupId;
+            const expandedRow = gruposTableBody.querySelector(`.expanded-content[data-group-id="${groupId}"]`);
+            
+            if (expandedRow) {
+                expandedRow.classList.toggle('hidden');
+                if (!expandedRow.classList.contains('hidden')) {
+                    const expandedContentTd = expandedRow.querySelector('td');
+                    await renderEscuadrasEnGrupo(groupId, expandedContentTd);
+                }
+            }
+            return;
+        }
+        
+        if (e.target.classList.contains('edit-btn')) {
+            const row = e.target.closest('tr');
+            const miembroId = row.dataset.miembroId;
+            const nombreSpan = row.querySelector('.miembro-nombre');
+            const puntosSpan = row.querySelector('.miembro-puntos');
 
-        const puedeEditar = (userProfile.rol === 'lider' || userProfile.rol === 'decano' || userProfile.rol === 'admin');
-        const idGrupo = (userProfile.rol !== 'admin') ? userProfile.id_grupo : null;
-        
-        // Renderizar la tabla del grupo si el usuario no es admin
-        if (idGrupo) {
-             await renderMiembrosDelGrupo(idGrupo, puedeEditar);
-        }
+            // Crear campos de entrada
+            const nombreInput = document.createElement('input');
+            nombreInput.type = 'text';
+            nombreInput.value = nombreSpan.textContent;
+            nombreInput.className = 'edit-input';
 
-        // Si el usuario es el líder principal (admin), puede gestionar todos los grupos
-        if (userProfile.rol === 'admin') {
-            console.log('Admin logeado. Acceso total a la gestión de grupos.');
-            // Aquí podrías agregar lógica para que el admin pueda seleccionar un grupo para gestionar
-        }
-    }
+            const puntosInput = document.createElement('input');
+            puntosInput.type = 'number';
+            puntosInput.value = puntosSpan.textContent;
+            puntosInput.className = 'edit-input';
 
-    function handleLogout() {
-        loginBtn.style.display = 'block';
-        logoutBtn.style.display = 'none';
-        manageGroupSection.style.display = 'none';
-        document.querySelectorAll('.actions-header, .actions-cell').forEach(el => el.style.display = 'none');
-        renderGrupos(); // Volver a la vista pública
-    }
-    
-    // --- Lógica del botón de inicio de sesión (CORREGIDO) ---
-    loginBtn.addEventListener('click', async () => {
-        const email = prompt("Ingresa tu correo:");
-        const password = prompt("Ingresa tu contraseña:");
+            // Reemplazar spans con inputs
+            nombreSpan.replaceWith(nombreInput);
+            puntosSpan.replaceWith(puntosInput);
 
-        if (email && password) {
-            const { error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
+            // Cambiar botón de 'Editar' a 'Guardar'
+            e.target.textContent = 'Guardar';
+            e.target.classList.remove('edit-btn');
+            e.target.classList.add('save-btn');
+        }
 
-            if (error) {
-                alert("Error al iniciar sesión: verifica tu correo y contraseña.");
-                console.error(error);
-            }
-        }
-    });
+        if (e.target.classList.contains('save-btn')) {
+            const row = e.target.closest('tr');
+            const miembroId = row.dataset.miembroId;
+            const nombreInput = row.querySelector('input[type="text"]');
+            const puntosInput = row.querySelector('input[type="number"]');
+            
+            const nuevoNombre = nombreInput.value;
+            const nuevosPuntos = parseInt(puntosInput.value);
 
-    logoutBtn.addEventListener('click', async () => {
-        await supabase.auth.signOut();
-    });
+            const { error } = await supabase
+                .from('miembros_del_clan')
+                .update({ nombre: nuevoNombre, puntos: nuevosPuntos })
+                .eq('id', miembroId);
+            
+            if (error) {
+                alert('Error al guardar cambios.');
+                console.error(error);
+            } else {
+                alert('Miembro actualizado con éxito.');
+                await renderGrupoParaGestion(currentGroupId, true);
+            }
+        }
+        
+        if (e.target.classList.contains('delete-btn')) {
+            const memberId = e.target.dataset.id;
+            if (confirm('¿Estás seguro de que quieres expulsar a este miembro?')) {
+                const { error } = await supabase
+                    .from('miembros_del_clan')
+                    .delete()
+                    .eq('id', memberId);
 
-    // --- Funciones de gestión de datos ---
+                if (error) {
+                    alert('Error al expulsar miembro.');
+                    console.error(error);
+                } else {
+                    alert('Miembro expulsado con éxito.');
+                    await renderGrupoParaGestion(currentGroupId, true);
+                }
+            }
+        }
 
-    updateMemberForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const nombre = document.getElementById('member-name').value;
-        const puntos = parseInt(document.getElementById('member-points').value);
+        if (e.target.classList.contains('add-member-btn')) {
+            const escuadraId = e.target.dataset.escuadraId;
+            const tableBody = e.target.closest('.miembros-section').querySelector('tbody');
 
-        if (nombre && !isNaN(puntos)) {
-            // Lógica para actualizar en Supabase
-            const { error } = await supabase
-                .from('miembros_del_clan')
-                .update({ puntos: puntos })
-                .eq('nombre', nombre);
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td><input type="text" placeholder="Nombre" class="new-member-name"></td>
+                <td><input type="number" placeholder="Puntos" class="new-member-points"></td>
+                <td>
+                    <button class="save-new-member-btn" data-escuadra-id="${escuadraId}">Guardar</button>
+                    <button class="cancel-new-member-btn">Cancelar</button>
+                </td>
+            `;
+            tableBody.appendChild(newRow);
+            e.target.style.display = 'none'; // Ocultar el botón de añadir para evitar duplicados
+        }
 
-            if (error) {
-                alert('Error al actualizar: Es posible que no tengas permiso o que el nombre no exista.');
-            } else {
-                alert('Puntos actualizados con éxito.');
-                // Recargar la tabla (CORREGIDO)
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    const { data: perfil } = await supabase.from('perfiles').select('id_grupo').eq('id', session.user.id).single();
-                    if (perfil) {
-                        await renderMiembrosDelGrupo(perfil.id_grupo, true);
-                    }
-                }
-            }
-            updateMemberForm.reset();
-        }
-    });
+        if (e.target.classList.contains('save-new-member-btn')) {
+            const row = e.target.closest('tr');
+            const escuadraId = e.target.dataset.escuadraId;
+            const nombre = row.querySelector('.new-member-name').value;
+            const puntos = parseInt(row.querySelector('.new-member-points').value);
 
-    // Iniciar la aplicación en modo público
-    renderGrupos();
+            if (nombre && !isNaN(puntos)) {
+                 const { error } = await supabase
+                    .from('miembros_del_clan')
+                    .insert({ nombre, puntos, id_escuadra: escuadraId, id_grupo: currentGroupId });
+
+                if (error) {
+                    alert('Error al añadir miembro.');
+                    console.error(error);
+                } else {
+                    alert('Miembro añadido con éxito.');
+                    await renderGrupoParaGestion(currentGroupId, true);
+                }
+            } else {
+                alert('Por favor, ingresa un nombre y puntos válidos.');
+            }
+        }
+        
+        if (e.target.classList.contains('cancel-new-member-btn')) {
+            const row = e.target.closest('tr');
+            const parentSection = row.closest('.miembros-section');
+            const addBtn = parentSection.querySelector('.add-member-btn');
+            
+            row.remove();
+            if (addBtn) addBtn.style.display = 'block';
+        }
+    });
+
+    renderGrupos(false);
 });
