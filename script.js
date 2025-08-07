@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-// Reemplaza estas URLs con las de tu proyecto en Supabase
+// Estas son tus claves de proyecto de Supabase
 const supabaseUrl = 'https://nihwpbxkwrndxubpqkes.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHdwYnhrd3JuZHh1YnBxa2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1Njc3MDgsImV4cCI6MjA3MDE0MzcwOH0.MTl0cNJFxkevLJWOUCsSgNyFHSTf9rZ7yop-OQlSNpg';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -73,7 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Funciones de autenticación ---
-
+    
+    // Escucha los cambios de autenticación para saber si un usuario inicia o cierra sesión
     supabase.auth.onAuthStateChange((event, session) => {
         if (session) {
             handleLogin(session);
@@ -121,6 +122,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.actions-header, .actions-cell').forEach(el => el.style.display = 'none');
         renderGrupos(); // Volver a la vista pública
     }
+    
+    // --- Lógica del botón de inicio de sesión (CORREGIDO) ---
+    loginBtn.addEventListener('click', async () => {
+        const email = prompt("Ingresa tu correo:");
+        const password = prompt("Ingresa tu contraseña:");
+
+        if (email && password) {
+            const { error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                alert("Error al iniciar sesión: verifica tu correo y contraseña.");
+                console.error(error);
+            }
+        }
+    });
 
     logoutBtn.addEventListener('click', async () => {
         await supabase.auth.signOut();
@@ -144,10 +163,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Error al actualizar: Es posible que no tengas permiso o que el nombre no exista.');
             } else {
                 alert('Puntos actualizados con éxito.');
-                // Recargar la tabla
-                const { user } = await supabase.auth.getSession();
-                if (user) {
-                    const { data: perfil } = await supabase.from('perfiles').select('id_grupo').eq('id', user.id).single();
+                // Recargar la tabla (CORREGIDO)
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    const { data: perfil } = await supabase.from('perfiles').select('id_grupo').eq('id', session.user.id).single();
                     if (perfil) {
                         await renderMiembrosDelGrupo(perfil.id_grupo, true);
                     }
