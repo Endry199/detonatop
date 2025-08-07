@@ -85,8 +85,8 @@ async function ensureGroupStructure(groupId) {
     if (gruposError) {
         console.error('Error al obtener la lista de grupos:', gruposError);
     } else {
-              const manuelGroup = grupos.find(g => g.nombre.toLowerCase().includes('manuel'));
-              const frenyedGroup = grupos.find(g => g.nombre.toLowerCase().includes('frenyed'));
+        const manuelGroup = grupos.find(g => g.nombre.toLowerCase().includes('manuel'));
+        const frenyedGroup = grupos.find(g => g.nombre.toLowerCase().includes('frenyed'));
 
         if (manuelGroup && groupId === manuelGroup.id) {
             targetSquads = 2;
@@ -102,7 +102,7 @@ async function ensureGroupStructure(groupId) {
         .from('escuadras')
         .select(`id, nombre`)
         .eq('id_grupo', groupId)
-        .order('id');
+        .order('puntos_totales', { ascending: false }); // <-- Modificado
 
     if (escuadrasError) {
         console.error('Error al obtener escuadras para asegurar la estructura:', escuadrasError);
@@ -148,7 +148,7 @@ async function ensureGroupStructure(groupId) {
             )
         `)
         .eq('id_grupo', groupId)
-        .order('id');
+        .order('puntos_totales', { ascending: false }); // <-- Modificado
 
     if (finalError) {
         console.error('Error al obtener la estructura final:', finalError);
@@ -200,7 +200,7 @@ async function ensureGroupStructure(groupId) {
             )
         `)
         .eq('id_grupo', groupId)
-        .order('id');
+        .order('puntos_totales', { ascending: false }); // <-- Modificado
     
     if(finalFinalError) {
         console.error('Error al obtener la estructura final:', finalFinalError);
