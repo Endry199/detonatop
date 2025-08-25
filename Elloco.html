@@ -5,189 +5,127 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Currículum de Endry Josué Reyes Sequera</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
-
-        :root {
-            --bg-color: #0b0c10;
-            --container-bg: #1a1b26;
-            --main-text-color: #e0e0e0;
-            --accent-purple: #9066dd;
-            --accent-cyan: #66d9ef;
-            --border-color: rgba(255, 255, 255, 0.1);
-            --shadow-glow: 0 0 10px rgba(144, 102, 221, 0.5);
-        }
-
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--main-text-color);
-            line-height: 1.6;
+            font-family: 'Arial', sans-serif;
             margin: 0;
+            padding: 0;
+            background-color: #1a1a2e; /* Fondo oscuro principal */
+            color: #d4d4d4; /* Color de texto general */
             display: flex;
             justify-content: center;
-            padding: 2rem;
+            align-items: center;
+            min-height: 100vh;
         }
-
-        .resume-container {
-            width: 100%;
-            max-width: 900px;
-            background-color: var(--container-bg);
+        .cv-container {
+            width: 90%;
+            max-width: 850px;
+            background-color: #2c2c3e; /* Fondo del contenedor */
             padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
         }
-
-        header {
+        .left-column {
+            background-color: #3e3250; /* Fondo columna izquierda */
+            color: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+        }
+        .right-column {
+            padding: 1.5rem;
+        }
+        h1 {
+            color: #6a0dad; /* Morado para el nombre */
+            font-size: 2.5rem;
+            margin-top: 0;
             text-align: center;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid var(--accent-purple);
-            padding-bottom: 1rem;
         }
-
-        header h1 {
-            color: var(--accent-purple);
-            font-size: 2.8rem;
-            margin: 0;
-            font-weight: 700;
-            text-shadow: var(--shadow-glow);
-            letter-spacing: 2px;
-        }
-
-        .contact-info {
-            display: flex;
-            justify-content: center;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-            margin-top: 0.5rem;
-        }
-
-        .contact-info p {
-            margin: 0;
-            font-size: 0.9rem;
-            color: #b0b0b0;
-        }
-        
-        section {
+        h2 {
+            color: #6a0dad;
+            border-bottom: 2px solid #8a2be2;
+            padding-bottom: 0.5rem;
             margin-top: 2rem;
         }
-
-        section h2 {
-            font-size: 1.8rem;
-            color: var(--accent-cyan);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-            font-weight: 500;
-        }
-
-        section p {
-            font-size: 1rem;
+        p {
             margin: 0.5rem 0;
+            line-height: 1.6;
         }
-
         ul {
-            list-style-type: none;
+            list-style: none;
             padding: 0;
-            margin: 0;
         }
-
         li {
-            position: relative;
-            padding-left: 20px;
-            margin-bottom: 10px;
-            font-size: 1rem;
-        }
-
-        li::before {
-            content: "◆";
-            position: absolute;
-            left: 0;
-            color: var(--accent-cyan);
-            font-size: 0.8rem;
-        }
-
-        .job-title {
-            font-weight: 700;
-            color: var(--accent-purple);
-            margin-bottom: 0.2rem;
-        }
-
-        .job-details {
-            font-size: 0.9rem;
-            color: #d0d0d0;
-            margin-top: 0;
-        }
-
-        .project-list {
-            list-style-type: none;
-            padding-left: 0;
-        }
-
-        .project-item {
-            margin-bottom: 1.5rem;
-            border-left: 3px solid var(--accent-cyan);
-            padding-left: 1rem;
-        }
-
-        .project-item h3 {
-            margin-top: 0;
             margin-bottom: 0.5rem;
-            color: var(--accent-purple);
+            line-height: 1.6;
         }
-
+        li::before {
+            content: '●';
+            color: #8a2be2;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+        .contact-info p, .experience-item p {
+            margin: 0.3rem 0;
+        }
+        .experience-item h3 {
+            color: #8a2be2;
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
-    <div class="resume-container">
-        <header>
-            <h1>Endry Josué Reyes Sequera</h1>
-            <div class="contact-info">
-                <p>Email: endryreyes199@gmail.com</p>
-                <p>Teléfono: +584127123391</p>
-                <p>Ubicación: Venezuela</p>
-            </div>
-        </header>
 
-        <section>
-            <h2>Resumen Profesional</h2>
-            <p>
-                Estudiante de ingeniería de sistemas con una sólida base técnica en el desarrollo web y un enfoque analítico. Poseo un dominio avanzado de <strong>HTML, CSS y JavaScript</strong>, los cuales he aplicado en proyectos para crear interfaces de usuario robustas. Mis conocimientos en matemáticas avanzadas han fortalecido mi capacidad para la resolución de problemas y mi atención al detalle. Busco una oportunidad para aplicar mis habilidades y mi mentalidad de aprendizaje rápido en un entorno profesional.
-            </p>
-        </section>
-
-        <section>
+<div class="cv-container">
+    <div class="left-column">
+        <h1>Endry Josué Reyes Sequera</h1>
+        <div class="contact-info">
+            <h2>Contacto</h2>
+            <p><strong>Correo:</strong> endryreyes199@gmail.com</p>
+            <p><strong>Teléfono:</strong> +584127123391</p>
+            <p><strong>Ubicación:</strong> Venezuela</p>
+        </div>
+        <div class="skills">
             <h2>Habilidades</h2>
             <ul>
                 <li><strong>Lenguajes y Tecnologías:</strong> HTML5, CSS3, JavaScript, SQL, Supabase.</li>
                 <li><strong>Software:</strong> Microsoft Office (especialmente Excel).</li>
                 <li><strong>Habilidades Interpersonales:</strong> Pensamiento analítico, resolución de problemas, atención al detalle, aprendizaje rápido.</li>
             </ul>
-        </section>
-
-        <section>
+        </div>
+    </div>
+    
+    <div class="right-column">
+        <div class="summary">
+            <h2>Resumen Profesional</h2>
+            <p>Estudiante de ingeniería de sistemas con una sólida base técnica en el desarrollo web y un enfoque analítico. Poseo un dominio avanzado de **HTML, CSS y JavaScript**, los cuales he aplicado en proyectos para crear interfaces de usuario robustas. Mis conocimientos en matemáticas avanzadas han fortalecido mi capacidad para la resolución de problemas y mi atención al detalle. Busco una oportunidad para aplicar mis habilidades y mi mentalidad de aprendizaje rápido en un entorno profesional.</p>
+        </div>
+        <div class="experience">
             <h2>Experiencia</h2>
-            <div class="project-item">
+            <div class="experience-item">
                 <h3>Desarrollo de Plataforma de Recargas de Juegos</h3>
-                <p class="job-details">Proyecto Personal</p>
+                <p><strong>Proyecto Personal</strong></p>
                 <ul>
                     <li>Diseñé y programé una plataforma web completa para recargas de juegos digitales utilizando <strong>HTML, CSS y JavaScript</strong> para el frontend.</li>
                     <li>Implementé la funcionalidad de la plataforma en el backend con <strong>Supabase</strong>, utilizando <strong>SQL</strong> para gestionar la base de datos de usuarios y la moneda virtual.</li>
                     <li>Creé un sistema de inicio de sesión seguro, que demostró mi capacidad para manejar la autenticación de usuarios y las interacciones con el sistema de moneda virtual.</li>
                 </ul>
             </div>
-        </section>
-
-        <section>
+        </div>
+        <div class="education">
             <h2>Formación Académica</h2>
-            <div class="project-item">
+            <div class="education-item">
                 <h3>Ingeniería de Sistemas</h3>
-                <p class="job-details">Estudiante, con graduación prevista en 2 años.</p>
+                <p><strong>Estudiante, con graduación prevista en 2 años.</strong></p>
                 <ul>
                     <li><strong>Cursos relevantes:</strong> Cálculo, Álgebra, Estructuras de Datos, Fundamentos de Bases de Datos.</li>
                 </ul>
             </div>
-        </section>
+        </div>
     </div>
+</div>
+
 </body>
 </html>
